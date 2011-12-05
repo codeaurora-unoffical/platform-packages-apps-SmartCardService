@@ -17,7 +17,7 @@
  * Contributed by: Giesecke & Devrient GmbH.
  */
 
-package android.smartcard;
+package org.simalliance.openmobileapi.service;
 
 import android.content.Context;
 import android.content.pm.PackageInfo;
@@ -52,8 +52,7 @@ public class AddonTerminal extends Terminal {
         List<String> packageNameList = new LinkedList<String>();
         List<PackageInfo> pis = context.getPackageManager().getInstalledPackages(0);
         for (PackageInfo p : pis) {
-            if (p.packageName.startsWith("android.smartcard.terminals.")
-                    || p.packageName.startsWith("android.smartcard.cts")
+            if (p.packageName.startsWith("org.simalliance.openmobileapi.service.terminals.")
                     || p.packageName.startsWith("org.simalliance.openmobileapi.cts")) {
                 packageNameList.add(p.packageName);
             }

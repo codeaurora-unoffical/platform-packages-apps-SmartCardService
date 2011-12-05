@@ -17,7 +17,7 @@
  * Contributed by: Giesecke & Devrient GmbH.
  */
 
-package android.smartcard;
+package org.simalliance.openmobileapi.service;
 
 /**
  * Callback interface used by ISmartcardService to check if clients are alive.

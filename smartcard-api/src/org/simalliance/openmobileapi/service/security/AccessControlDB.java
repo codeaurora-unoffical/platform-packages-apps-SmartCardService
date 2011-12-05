@@ -14,12 +14,12 @@
  * limitations under the License.
  */
 
-package android.smartcard.security;
+package org.simalliance.openmobileapi.service.security;
 
 import org.apache.http.util.ByteArrayBuffer;
+import org.simalliance.openmobileapi.service.CardException;
+import org.simalliance.openmobileapi.service.IChannel;
 
-import android.smartcard.CardException;
-import android.smartcard.IChannel;
 
 import java.security.AccessControlException;
 

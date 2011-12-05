@@ -14,17 +14,12 @@
  * the License.
  */
 
-package android.smartcard.security;
+package org.simalliance.openmobileapi.service.security;
 
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.Signature;
-import android.smartcard.CardException;
-import android.smartcard.IChannel;
-import android.smartcard.ISmartcardServiceCallback;
-import android.smartcard.ITerminal;
-import android.smartcard.SmartcardError;
-import android.smartcard.Util;
+import org.simalliance.openmobileapi.service.ISmartcardServiceCallback;
 import android.util.Log;
 
 import java.io.ByteArrayInputStream;
@@ -39,6 +34,12 @@ import java.security.cert.X509Certificate;
 import java.util.List;
 import java.util.MissingResourceException;
 import java.util.NoSuchElementException;
+
+import org.simalliance.openmobileapi.service.CardException;
+import org.simalliance.openmobileapi.service.IChannel;
+import org.simalliance.openmobileapi.service.ITerminal;
+import org.simalliance.openmobileapi.service.SmartcardError;
+import org.simalliance.openmobileapi.service.Util;
 
 public class AccessController {
 
@@ -107,6 +108,7 @@ public class AccessController {
             return null;
         }
 
+
         for (Signature signature : foundPkgInfo.signatures) {
             return decodeCertificate(signature.toByteArray());
         }
@@ -163,7 +165,7 @@ public class AccessController {
     }
 
     public ChannelAccess enableAccessConditions(ITerminal terminal, byte[] aid,
-            String callerPackageName, ISmartcardServiceCallback callback, SmartcardError error) {
+            String callerPackageName, ISmartcardServiceCallback callback, SmartcardError error) throws Exception {
         ChannelAccess channelAccess = new ChannelAccess();
         IChannel channel = null;
         long hChannel = 0;
@@ -186,9 +188,7 @@ public class AccessController {
                 // no free channel available or another error => No access
                 closeChannel(terminal.getChannel(hChannel));
                 
-                if (e instanceof MissingResourceException)
-                    throw new MissingResourceException(msg, "", "");
-                throw new AccessControlException(msg);
+                throw e;
             }
 
             

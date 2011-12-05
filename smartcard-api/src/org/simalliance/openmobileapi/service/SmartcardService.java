@@ -17,7 +17,7 @@
  * Contributed by: Giesecke & Devrient GmbH.
  */
 
-package android.smartcard;
+package org.simalliance.openmobileapi.service;
 
 import dalvik.system.DexClassLoader;
 import dalvik.system.DexFile;
@@ -30,8 +30,8 @@ import android.content.Intent;
 import android.os.Binder;
 import android.os.IBinder;
 import android.os.RemoteException; 
-import android.smartcard.security.AccessController;
-import android.smartcard.security.ChannelAccess; 
+import org.simalliance.openmobileapi.service.ISmartcardService;
+import org.simalliance.openmobileapi.service.ISmartcardServiceCallback;
 import android.util.Log;
 
 import java.lang.reflect.Constructor;
@@ -45,10 +45,15 @@ import java.util.NoSuchElementException;
 import java.util.Set;
 import java.util.TreeMap;
 
+
+import org.simalliance.openmobileapi.service.security.AccessController;
+import org.simalliance.openmobileapi.service.security.ChannelAccess;
+
+
 /**
  * The smartcard service is setup with privileges to access smart card hardware.
  * The service enforces the permission
- * 'android.smartcard.service.permission.BIND'.
+ * 'org.simalliance.openmobileapi.service.permission.BIND'.
  */
 public final class SmartcardService extends Service {
 
@@ -87,7 +92,6 @@ public final class SmartcardService extends Service {
 
     
     private AccessController mAccess = null;
-
     
 
     /**
@@ -107,7 +111,7 @@ public final class SmartcardService extends Service {
                     channel.getTerminal().select();
                 } catch (NoSuchElementException exp) {
                     
-                    // Selection of the default application fails
+                    // Selection of the card manager fails
                     try {
                         channel.getTerminal().select(AccessController.ACCESS_CONTROL_AID);
                     } catch (NoSuchElementException exp2) {
@@ -126,6 +130,8 @@ public final class SmartcardService extends Service {
 
         public String[] getReaders(SmartcardError error) throws RemoteException {
             clearError(error);
+            
+            Log.v(SMARTCARD_SERVICE_TAG, "getReaders()"); 
 
             return updateTerminals();
         }
@@ -327,6 +333,28 @@ public final class SmartcardService extends Service {
                 return null;
             }
         }
+        
+        public byte[] getSelectResponse(long hChannel, SmartcardError error)
+        	 throws RemoteException {
+        	clearError(error);
+        	
+        	try {
+        		
+                IChannel channel = getChannel(hChannel, error);
+                if (channel == null) {
+                    return null;
+                }
+                
+                byte[] selectResponse = channel.getSelectResponse();
+                
+                
+        		return selectResponse;
+        		
+             } catch (Exception e) {
+                 setError(error, e);
+                 return null;
+             }
+        }
     };
 
     public SmartcardService() {
@@ -403,7 +431,10 @@ public final class SmartcardService extends Service {
         Set<String> names = mTerminals.keySet();
         ArrayList<String> list = new ArrayList<String>(names);
         Collections.sort(list);
-        Collections.reverse(list);
+        
+        // set UICC on the top
+        if(list.remove("SIM: UICC")) 
+        	list.add(0, "SIM: UICC");
 
         createAddonTerminals();
         names = mAddOnTerminals.keySet();
@@ -412,6 +443,7 @@ public final class SmartcardService extends Service {
                 list.add(name);
             }
         }
+        
         return list.toArray(new String[list.size()]);
     }
 
@@ -419,8 +451,11 @@ public final class SmartcardService extends Service {
         Set<String> names = mTerminals.keySet();
         ArrayList<String> list = new ArrayList<String>(names);
         Collections.sort(list);
-        Collections.reverse(list);
-
+        
+        // set UICC on the top
+        if(list.remove("SIM: UICC")) 
+        	list.add(0, "SIM: UICC");
+        
         updateAddonTerminals();
         names = mAddOnTerminals.keySet();
         for (String name : names) {
@@ -428,6 +463,7 @@ public final class SmartcardService extends Service {
                 list.add(name);
             }
         }
+        
         return list.toArray(new String[list.size()]);
     }
 
@@ -522,12 +558,12 @@ public final class SmartcardService extends Service {
 
         ArrayList classes = new ArrayList();
         try {
-            String packageName = "android.smartcard";
+            String packageName = "org.simalliance.openmobileapi.service";
             String apkName = getPackageManager().getApplicationInfo(packageName, 0).sourceDir;
             DexClassLoader dexClassLoader = new DexClassLoader(apkName, "/tmp", null, getClass()
                     .getClassLoader());
 
-            Class terminalClass = Class.forName("android.smartcard.Terminal", true, dexClassLoader);
+            Class terminalClass = Class.forName("org.simalliance.openmobileapi.service.Terminal", true, dexClassLoader);
             if (terminalClass == null) {
                 return classes.toArray();
             }
@@ -539,7 +575,7 @@ public final class SmartcardService extends Service {
                 Class clazz = Class.forName(className);
                 Class superClass = clazz.getSuperclass();
                 if (superClass != null && superClass.equals(terminalClass)
-                        && !className.equals("android.smartcard.AddonTerminal")) {
+                        && !className.equals("org.simalliance.openmobileapi.service.AddonTerminal")) {
                     classes.add(clazz);
                 }
             }

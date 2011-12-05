@@ -17,9 +17,10 @@
  * Contributed by: Giesecke & Devrient GmbH.
  */
 
-package android.smartcard;
+package org.simalliance.openmobileapi.service;
 
 import android.content.Context;
+import org.simalliance.openmobileapi.service.ISmartcardServiceCallback;
 import android.util.Log;
 
 import java.util.Collection;
@@ -40,11 +41,15 @@ public abstract class Terminal implements ITerminal {
 
     public static final String TERMINAL_SERVICE_TAG = "TERMINAL";
 
-    private final Map<Long, IChannel> mChannels = new HashMap<Long, IChannel>();
+    protected final Map<Long, IChannel> mChannels = new HashMap<Long, IChannel>();
 
     protected final String mName;
 
     public volatile boolean mIsConnected;
+    
+    protected byte[] mSelectResponse;
+    
+    protected boolean mDefaultApplicationSelectedOnBasicChannel = true;
 
     /**
      * Returns a concatenated response.
@@ -257,9 +262,10 @@ public abstract class Terminal implements ITerminal {
 
     /**
      * Performs a select command on the basic channel without an AID parameter. <br>
-     * The default application will be selected.
+     * The card manager will be selected.
      */
     public void select() {
+    	mSelectResponse = null;
         byte[] selectCommand = new byte[5];
         selectCommand[0] = 0x00;
         selectCommand[1] = (byte) 0xA4;
@@ -267,7 +273,8 @@ public abstract class Terminal implements ITerminal {
         selectCommand[3] = 0x00;
         selectCommand[4] = 0x00;
         try {
-            transmit(selectCommand, 2, 0x9000, 0xFFFF, "SELECT");
+        	mSelectResponse = transmit(selectCommand, 2, 0x9000, 0xFFFF, "SELECT");
+            
         } catch (Exception exp) {
             throw new NoSuchElementException(exp.getMessage());
         }
@@ -293,6 +300,7 @@ public abstract class Terminal implements ITerminal {
         if (aid == null) {
             throw new NullPointerException("aid must not be null");
         }
+        mSelectResponse = null;
         byte[] selectCommand = new byte[aid.length + 6];
         selectCommand[0] = 0x00;
         selectCommand[1] = (byte) 0xA4;
@@ -301,7 +309,7 @@ public abstract class Terminal implements ITerminal {
         selectCommand[4] = (byte) aid.length;
         System.arraycopy(aid, 0, selectCommand, 5, aid.length);
         try {
-            transmit(selectCommand, 2, 0x9000, 0xFFFF, "SELECT");
+        	mSelectResponse = transmit(selectCommand, 2, 0x9000, 0xFFFF, "SELECT");
         } catch (Exception exp) {
             throw new NoSuchElementException(exp.getMessage());
         }
@@ -313,6 +321,9 @@ public abstract class Terminal implements ITerminal {
         }
 
         synchronized (mChannels) {
+        	if(!mDefaultApplicationSelectedOnBasicChannel) {
+        		throw new CardException("default application is not selected");
+        	}
             if (getBasicChannel() != null) {
                 throw new CardException("basic channel in use");
             }
@@ -354,6 +365,7 @@ public abstract class Terminal implements ITerminal {
 
             Channel basicChannel = createChannel(0, callback);
             basicChannel.hasSelectedAid(true);
+            mDefaultApplicationSelectedOnBasicChannel = false;
             long hChannel = registerChannel(basicChannel);
             return hChannel;
         }
@@ -402,6 +414,7 @@ public abstract class Terminal implements ITerminal {
             int channelNumber = 0;
             try {
                 channelNumber = internalOpenLogicalChannel(aid);
+                
             } catch (Exception e) {
                 if (mIsConnected && mChannels.isEmpty()) {
                     internalDisconnect();
@@ -527,6 +540,20 @@ public abstract class Terminal implements ITerminal {
             }
         }
         return rsp;
+    }
+    
+    /**
+     * Returns the data as received from the application select command inclusively the status word.
+     * The returned byte array contains the data bytes in the following order:
+     * [<first data byte>, ..., <last data byte>, <sw1>, <sw2>]
+     * @return The data as returned by the application select command inclusively the status word.
+     * @return Only the status word if the application select command has no returned data.
+     * @return null if an application select command has not been performed or the selection response can not
+     * be retrieved by the reader implementation.
+     */
+    public byte[] getSelectResponse()
+    {
+    	return mSelectResponse;
     }
 
 }

@@ -17,7 +17,7 @@
  * Contributed by: Giesecke & Devrient GmbH.
  */
 
-package android.smartcard;
+package org.simalliance.openmobileapi.service;
 
 public class Util {
 
@@ -38,6 +38,8 @@ public class Util {
     }
 
     public static String bytesToString(byte[] bytes) {
+    	if(bytes == null)
+    		return "";
         StringBuffer sb = new StringBuffer();
         for (byte b : bytes) {
             sb.append(String.format("%02x ", b & 0xFF));

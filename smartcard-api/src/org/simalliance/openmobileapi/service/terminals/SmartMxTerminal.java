@@ -17,26 +17,29 @@
  * Contributed by: Giesecke & Devrient GmbH.
  */
 
-package android.smartcard.terminals;
+package org.simalliance.openmobileapi.service.terminals;
 
 import android.content.Context;
 import android.nfc.INfcAdapterExtras;
 import android.nfc.NfcAdapter;
 import android.os.Binder;
 import android.os.Bundle;
-import android.smartcard.CardException;
-import android.smartcard.Terminal;
+import android.util.Log;
 
 
 import java.util.MissingResourceException;
 import java.util.NoSuchElementException;
+
+import org.simalliance.openmobileapi.service.CardException;
+import org.simalliance.openmobileapi.service.Terminal;
+
 
 public class SmartMxTerminal extends Terminal {
 
     private INfcAdapterExtras ex;
 
     public SmartMxTerminal(Context context) {
-        super("SmartMX", context);
+        super("eSE: SmartMX", context);
     }
 
     public boolean isCardPresent() throws CardException {
@@ -59,7 +62,7 @@ public class SmartMxTerminal extends Terminal {
         } catch (Exception e) {
             throw new CardException("open SE failed");
         }
-
+        mDefaultApplicationSelectedOnBasicChannel = true;
         mIsConnected = true;
     }
 
@@ -91,6 +94,7 @@ public class SmartMxTerminal extends Terminal {
     @Override
     protected int internalOpenLogicalChannel() throws Exception {
 
+    	mSelectResponse = null;
         byte[] manageChannelCommand = new byte[] {
                 0x00, 0x70, 0x00, 0x00, 0x01
         };
@@ -114,9 +118,11 @@ public class SmartMxTerminal extends Terminal {
 
     @Override
     protected int internalOpenLogicalChannel(byte[] aid) throws Exception {
+
         if (aid == null) {
             throw new NullPointerException("aid must not be null");
         }
+    	mSelectResponse = null;
 
         byte[] manageChannelCommand = new byte[] {
                 0x00, 0x70, 0x00, 0x00, 0x01
@@ -146,7 +152,7 @@ public class SmartMxTerminal extends Terminal {
         selectCommand[4] = (byte) aid.length;
         System.arraycopy(aid, 0, selectCommand, 5, aid.length);
         try {
-            transmit(selectCommand, 2, 0x9000, 0xFFFF, "SELECT");
+        	mSelectResponse = transmit(selectCommand, 2, 0x9000, 0xFFFF, "SELECT");
         } catch (CardException exp) {
             internalCloseLogicalChannel(channelNumber);
             throw new NoSuchElementException(exp.getMessage());

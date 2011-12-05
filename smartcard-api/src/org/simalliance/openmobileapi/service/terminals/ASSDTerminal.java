@@ -17,21 +17,23 @@
  * Contributed by: Giesecke & Devrient GmbH.
  */
 
-package android.smartcard.terminals;
+package org.simalliance.openmobileapi.service.terminals;
 
 import android.content.Context;
-import android.smartcard.CardException;
-import android.smartcard.Terminal;
+
 
 import java.util.MissingResourceException;
 import java.util.NoSuchElementException;
+
+import org.simalliance.openmobileapi.service.CardException;
+import org.simalliance.openmobileapi.service.Terminal;
 
 final class ASSDTerminal extends Terminal {
 
     private static boolean JNILoaded = false;
 
     public ASSDTerminal(Context context) {
-        super("Advanced Security SD", context);
+        super("SD: Secure SD Card", context);
     }
 
     @Override
@@ -42,12 +44,12 @@ final class ASSDTerminal extends Terminal {
 
         try {
             if (Open() == false) {
-                throw new CardException("JNI failed");
+                throw new CardException("open SE failed");
             }
         } catch (Exception e) {
-            throw new CardException("JNI failed");
+            throw new CardException("open SE failed");
         }
-
+        mDefaultApplicationSelectedOnBasicChannel = true;
         mIsConnected = true;
     }
 
@@ -86,11 +88,11 @@ final class ASSDTerminal extends Terminal {
         try {
             byte[] response = Transmit(command);
             if (response == null) {
-                throw new CardException("JNI failed");
+                throw new CardException("transmit failed");
             }
             return response;
         } catch (Exception e) {
-            throw new CardException("JNI failed");
+            throw new CardException("transmit failed");
         }
     }
 
@@ -110,6 +112,8 @@ final class ASSDTerminal extends Terminal {
 
     @Override
     protected int internalOpenLogicalChannel() throws Exception {
+    	
+    	mSelectResponse = null;
         byte[] manageChannelCommand = new byte[] {
                 0x00, 0x70, 0x00, 0x00, 0x01
         };
@@ -129,6 +133,10 @@ final class ASSDTerminal extends Terminal {
     protected int internalOpenLogicalChannel(byte[] aid) throws Exception {
         int channelNumber = internalOpenLogicalChannel();
 
+        if (aid == null) {
+            throw new NullPointerException("aid must not be null");
+        }
+        mSelectResponse = null;
         byte[] selectCommand = new byte[aid.length + 6];
         selectCommand[0] = (byte) channelNumber;
         if (channelNumber > 3) {
@@ -139,7 +147,7 @@ final class ASSDTerminal extends Terminal {
         selectCommand[4] = (byte) aid.length;
         System.arraycopy(aid, 0, selectCommand, 5, aid.length);
         try {
-            transmit(selectCommand, 2, 0x9000, 0xFFFF, "SELECT");
+        	mSelectResponse = transmit(selectCommand, 2, 0x9000, 0xFFFF, "SELECT");
         } catch (CardException e) {
             internalCloseLogicalChannel(channelNumber);
             throw new NoSuchElementException(e.getMessage());

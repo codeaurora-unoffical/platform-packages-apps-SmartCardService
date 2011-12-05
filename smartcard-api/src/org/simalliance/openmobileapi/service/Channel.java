@@ -17,11 +17,15 @@
  * Contributed by: Giesecke & Devrient GmbH.
  */
 
-package android.smartcard;
+package org.simalliance.openmobileapi.service;
+
+
+import org.simalliance.openmobileapi.service.security.ChannelAccess;
+
 
 import android.os.IBinder;
 import android.os.RemoteException; 
-import android.smartcard.security.ChannelAccess; 
+import org.simalliance.openmobileapi.service.ISmartcardServiceCallback;
 import android.util.Log;
 
 /**
@@ -34,12 +38,13 @@ class Channel implements IChannel, IBinder.DeathRecipient {
     protected long mHandle;
 
     protected Terminal mTerminal;
+    
+    protected byte[] mSelectResponse;
 
     protected final IBinder mBinder;
 
     
     protected ChannelAccess mChannelAccess = null;
-
     
 
     protected ISmartcardServiceCallback mCallback;
@@ -51,6 +56,7 @@ class Channel implements IChannel, IBinder.DeathRecipient {
         this.mTerminal = terminal;
         this.mCallback = callback;
         this.mBinder = callback.asBinder();
+        this.mSelectResponse = terminal.getSelectResponse();
         try {
             mBinder.linkToDeath(this, 0);
         } catch (RemoteException e) {
@@ -120,31 +126,61 @@ class Channel implements IChannel, IBinder.DeathRecipient {
         this.mHandle = handle;
     }
 
-    public byte[] transmit(byte[] command) throws CardException {
-        if (command.length < 4) {
-            throw new IllegalArgumentException("command must not be smaller than 4 bytes");
-        }
-        if (((command[0] & (byte) 0x80) == 0) && ((byte) (command[0] & (byte) 0x60) != (byte) 0x20)) {
-            // ISO command
-            if (command[1] == (byte) 0x70) {
-                throw new IllegalArgumentException("MANAGE CHANNEL command not allowed");
-            }
-            if ((command[1] == (byte) 0xA4) && (command[2] == (byte) 0x04)) {
-                throw new IllegalArgumentException("SELECT command not allowed");
-            }
-            int cla = command[0] & (byte) 0x7F;
-            if (mChannelNumber < 4) {
-                cla = (cla & 0x1C) | mChannelNumber;
-            } else {
-                cla = (cla & 0x30) | 0x40 | (mChannelNumber - 4);
-            }
-            command[0] = (byte) cla;
-        } else {
-            command[0] |= mChannelNumber;
-        }
-        byte[] rsp = getTerminal().transmit(command, 2, 0, 0, null);
-        return rsp;
-    }
+	public byte[] transmit(byte[] command) throws CardException {
+		if (command.length < 4) {
+			throw new IllegalArgumentException(
+					"command must not be smaller than 4 bytes");
+		}
+		if (((command[0] & (byte) 0x80) == 0)
+				&& ((byte) (command[0] & (byte) 0x60) != (byte) 0x20)) {
+			// ISO command
+			if (command[1] == (byte) 0x70) {
+				throw new IllegalArgumentException(
+						"MANAGE CHANNEL command not allowed");
+			}
+			if ((command[1] == (byte) 0xA4) && (command[2] == (byte) 0x04)) {
+				throw new IllegalArgumentException("SELECT command not allowed");
+			}
+
+		} else {
+			// GlobalPlatform command
+		}
+
+		// set channel number bits
+		command[0] = setChannelToClassByte(command[0], mChannelNumber);
+
+		byte[] rsp = getTerminal().transmit(command, 2, 0, 0, null);
+		return rsp;
+	}
+    
+	/**
+	 * Returns a copy of the given CLA byte where the channel number bits are
+	 * set as specified by the given channel number
+	 * 
+	 * See GlobalPlatform Card Specification 2.2.0.7: 11.1.4 Class Byte Coding
+	 * 
+	 * @param cla
+	 *            the CLA byte. Won't be modified
+	 * @param channelNumber
+	 *            within [0..3] (for first interindustry class byte coding) or
+	 *            [4..19] (for further interindustry class byte coding)
+	 * @return the CLA byte with set channel number bits. The seventh bit
+	 *         indicating the used coding (first/further interindustry class
+	 *         byte coding) might be modified
+	 */
+	private byte setChannelToClassByte(byte cla, int channelNumber) {
+		if (channelNumber < 4) {
+			// b7 = 0 indicates the first interindustry class byte coding
+			cla = (byte) ((cla & 0x9C) | channelNumber);
+		} else if (channelNumber < 20) {
+			// b7 = 1 indicates the further interindustry class byte coding
+			cla = (byte) ((cla & 0xB0) | 0x40 | (channelNumber - 4));
+		} else {
+			throw new IllegalArgumentException(
+					"Channel number must be within [0..19]");
+		}
+		return cla;
+	}
 
     
     public void setChannelAccess(ChannelAccess channelAccess) {
@@ -154,7 +190,6 @@ class Channel implements IChannel, IBinder.DeathRecipient {
     public ChannelAccess getChannelAccess() {
         return mChannelAccess;
     }
-
     
 
     /**
@@ -169,6 +204,20 @@ class Channel implements IChannel, IBinder.DeathRecipient {
      */
     public void hasSelectedAid(boolean has) {
         mHasSelectedAid = has;
+    }
+    
+    /**
+     * Returns the data as received from the application select command inclusively the status word.
+     * The returned byte array contains the data bytes in the following order:
+     * [<first data byte>, ..., <last data byte>, <sw1>, <sw2>]
+     * @return The data as returned by the application select command inclusively the status word.
+     * @return Only the status word if the application select command has no returned data.
+     * @return null if an application select command has not been performed or the selection response can not
+     * be retrieved by the reader implementation.
+     */
+    public byte[] getSelectResponse()
+    {
+    	return mSelectResponse;
     }
 
 }

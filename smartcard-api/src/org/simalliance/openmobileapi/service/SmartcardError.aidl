@@ -16,6 +16,6 @@
 /*
  * Contributed by: Giesecke & Devrient GmbH.
  */
-package android.smartcard;
+package org.simalliance.openmobileapi.service;
 
 parcelable SmartcardError;

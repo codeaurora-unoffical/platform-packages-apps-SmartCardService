@@ -17,10 +17,10 @@
  * Contributed by: Giesecke & Devrient GmbH.
  */
 
-package android.smartcard;
+package org.simalliance.openmobileapi.service;
 
-import android.smartcard.ISmartcardServiceCallback;
-import android.smartcard.SmartcardError;
+import org.simalliance.openmobileapi.service.ISmartcardServiceCallback;
+import org.simalliance.openmobileapi.service.SmartcardError;
 
 /**
  * Smartcard service interface.
@@ -79,4 +79,11 @@ interface ISmartcardService {
      * Selection of applets is not supported in logical channels.
      */
     byte[] transmit(long hChannel, in byte[] command, out SmartcardError error);
+    
+     /**
+     * Returns the data as received from the application select command inclusively the status word.
+     * The returned byte array contains the data bytes in the following order:
+     * [<first data byte>, ..., <last data byte>, <sw1>, <sw2>]
+     */
+    byte[] getSelectResponse(long hChannel, out SmartcardError error);
 }

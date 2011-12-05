@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package android.smartcard.security;
+package org.simalliance.openmobileapi.service.security;
 
 public class ChannelAccess {
 

@@ -17,7 +17,7 @@
  * Contributed by: Giesecke & Devrient GmbH.
  */
 
-package android.smartcard;
+package org.simalliance.openmobileapi.service;
 
 import android.os.Parcel;
 import android.os.Parcelable;

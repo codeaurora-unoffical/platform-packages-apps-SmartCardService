@@ -14,9 +14,9 @@
  * limitations under the License.
  */
 
-package android.smartcard.security;
+package org.simalliance.openmobileapi.service.security;
 
-import android.smartcard.Util;
+import org.simalliance.openmobileapi.service.Util;
 
 public class AccessCondition {
     protected byte[] mApdu;

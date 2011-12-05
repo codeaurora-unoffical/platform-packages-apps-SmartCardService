@@ -17,10 +17,12 @@
  * Contributed by: Giesecke & Devrient GmbH.
  */
 
-package android.smartcard;
+package org.simalliance.openmobileapi.service;
 
 
-import android.smartcard.security.ChannelAccess;
+import org.simalliance.openmobileapi.service.security.ChannelAccess;
+
+import org.simalliance.openmobileapi.service.ISmartcardServiceCallback;
 
 
 
@@ -96,4 +98,15 @@ public interface IChannel {
      * @return
      */
     void hasSelectedAid(boolean has);
+    
+    /**
+     * Returns the data as received from the application select command inclusively the status word.
+     * The returned byte array contains the data bytes in the following order:
+     * [<first data byte>, ..., <last data byte>, <sw1>, <sw2>]
+     * @return The data as returned by the application select command inclusively the status word.
+     * @return Only the status word if the application select command has no returned data.
+     * @return null if an application select command has not been performed or the selection response can not
+     * be retrieved by the reader implementation.
+     */
+    public byte[] getSelectResponse();
 }
