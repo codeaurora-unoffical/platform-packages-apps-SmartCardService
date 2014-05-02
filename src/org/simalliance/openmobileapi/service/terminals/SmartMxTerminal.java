@@ -48,9 +48,17 @@ public class SmartMxTerminal extends Terminal {
         try {
             NfcAdapter adapter =  NfcAdapter.getDefaultAdapter(mContext);
             if(adapter == null) {
-                throw new CardException("Cannot get NFC Default Adapter");
+                //throw new CardException("Cannot get NFC Default Adapter");
+                return false;
+            } else {
+                if(adapter.isEnabled()) {
+                    ex = adapter.getNfcAdapterExtrasInterface();
+                    if(ex != null)  {
+                        return ex.isSeEnabled("org.simalliance.openmobileapi.service", 2);
+                    }
+                }
+                return false;
             }
-            return adapter.isEnabled();
         } catch (Exception e) {
             return false;
         }
@@ -166,7 +174,15 @@ public class SmartMxTerminal extends Terminal {
         selectCommand[4] = (byte) aid.length;
         System.arraycopy(aid, 0, selectCommand, 5, aid.length);
         try {
-            mSelectResponse = transmit(selectCommand, 2, 0x9000, 0xFFFF, "SELECT");
+            mSelectResponse = transmit(selectCommand, 2, 0x9000, 0, "SELECT");
+            int sw1 = mSelectResponse[mSelectResponse.length - 2] & 0xFF;
+            int sw2 = mSelectResponse[mSelectResponse.length - 1] & 0xFF;
+            int sw = (sw1 << 8) | sw2;
+            // banking application returns 0x6283 to indicate this AID is locked
+            if ((sw != 0x9000)&&(sw != 0x6283)) {
+                internalCloseLogicalChannel(channelNumber);
+                throw new NoSuchElementException("SELECT CMD failed - SW is not 0x9000/0x6283");
+            }
         } catch (CardException exp) {
             internalCloseLogicalChannel(channelNumber);
             throw new NoSuchElementException(exp.getMessage());
