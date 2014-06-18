@@ -77,70 +77,74 @@ public class AccessRuleCache {
 
     public void putWithMerge( REF_DO ref_do, ChannelAccess channelAccess ) {
 
-        if( mRuleCache.containsKey(ref_do)){
-            ChannelAccess ca = mRuleCache.get(ref_do);
-            Log.v(SmartcardService._TAG, "Access Rule with " + ref_do.toString() + " already exists.");
+    	if( mRuleCache.containsKey(ref_do)){
+    		ChannelAccess ca = mRuleCache.get(ref_do);
+    		Log.v(SmartcardService._TAG, "Access Rule with " + ref_do.toString() + " already exists.");
 
-            // if new ac condition is more restrictive then use their settings
+    		// if new ac condition is more restrictive then use their settings
 
-            // if new rule says NFC is denied then use it
-            // if current rule as undefined NFC rule then use setting of new rule.
-            // current NFC    new NFC        resulting NFC
-            // UNDEFINED    x            x
-            // ALLOWED        !DENIED     ALLOWED
-            // ALLOWED        DENIED         DENIED
-            // DENIED         !DENIED     DENIED
-            // DENEID        DENIED      DENIED
-            if( channelAccess.getNFCEventAccess() == ChannelAccess.ACCESS.DENIED ||
-                    ca.getNFCEventAccess() == ChannelAccess.ACCESS.UNDEFINED ) {
-                ca.setNFCEventAccess(channelAccess.getNFCEventAccess());
-            }
-
-            // if new rule says APUD is denied then use it
-            // if current rule as undefined APDU rule then use setting of new rule.
-            // current APDU    new APDU    resulting APDU
-            // UNDEFINED    x            x
-            // ALLOWED        !DENIED     ALLOWED
-            // ALLOWED        DENIED         DENIED
-            // DENIED         !DENIED     DENIED
-            // DENEID        DENIED      DENIED
-            if( channelAccess.getApduAccess() == ChannelAccess.ACCESS.DENIED ||
-                    ca.getApduAccess() == ChannelAccess.ACCESS.UNDEFINED ) {
-                ca.setApduAccess(channelAccess.getApduAccess());
-            }
-
-
-            // put APDU filter together if resulting APDU access is allowed.
-            if( ca.getApduAccess() == ChannelAccess.ACCESS.ALLOWED ){
-                if( channelAccess.isUseApduFilter() ){
-                    ca.setUseApduFilter(true);
-                    ApduFilter[] filter = ca.getApduFilter();
-                    ApduFilter[] filter2 = channelAccess.getApduFilter();
-                    if( filter == null || filter.length == 0 ){
-                        ca.setApduFilter(filter2);
-                    } else if( filter2 == null || filter2.length == 0){
-                        ca.setApduFilter(filter);
-                    } else {
-                        ApduFilter[] sum = new ApduFilter[filter.length + filter2.length];
-                        int i = 0;
-                        for( ApduFilter f : filter ){
-                            sum[i++] = f;
-                        }
-                        for( ApduFilter f : filter2 ){
-                            sum[i++] = f;
-                        }
-                        ca.setApduFilter(sum);
-                    }
+                if( channelAccess.getAccess() == ChannelAccess.ACCESS.DENIED ||
+                    ca.getAccess() == ChannelAccess.ACCESS.UNDEFINED ) {
+                    ca.setAccess(channelAccess.getAccess(), channelAccess.getReason());
                 }
-            } else {
-                // if APDU access is not allowed the remove also all apdu filter
-                ca.setUseApduFilter(false);
-                ca.setApduFilter(null);
+
+    		// if new rule says NFC is denied then use it
+    		// if current rule as undefined NFC rule then use setting of new rule.
+    		// current NFC	new NFC		resulting NFC
+    		// UNDEFINED	x			x
+    		// ALLOWED		!DENIED 	ALLOWED
+    		// ALLOWED		DENIED 		DENIED
+    		// DENIED	 	!DENIED 	DENIED
+    		// DENEID		DENIED  	DENIED
+    		if( channelAccess.getNFCEventAccess() == ChannelAccess.ACCESS.DENIED ||
+    				ca.getNFCEventAccess() == ChannelAccess.ACCESS.UNDEFINED ) {
+    			ca.setNFCEventAccess(channelAccess.getNFCEventAccess());
             }
-            Log.v(SmartcardService._TAG, "Merged Access Rule: " + ca.toString());
-            return;
-        }
-        mRuleCache.put(ref_do, channelAccess);
+
+    		// if new rule says APUD is denied then use it
+    		// if current rule as undefined APDU rule then use setting of new rule.
+    		// current APDU	new APDU	resulting APDU
+    		// UNDEFINED	x			x
+    		// ALLOWED		!DENIED 	ALLOWED
+    		// ALLOWED		DENIED 		DENIED
+    		// DENIED	 	!DENIED 	DENIED
+    		// DENEID		DENIED  	DENIED
+    		if( channelAccess.getApduAccess() == ChannelAccess.ACCESS.DENIED ||
+    				ca.getApduAccess() == ChannelAccess.ACCESS.UNDEFINED ) {
+    			ca.setApduAccess(channelAccess.getApduAccess());
+    		}
+
+    		// put APDU filter together if resulting APDU access is allowed.
+    		if( ca.getApduAccess() == ChannelAccess.ACCESS.ALLOWED ){
+    			if( channelAccess.isUseApduFilter() ){
+    				ca.setUseApduFilter(true);
+    				ApduFilter[] filter = ca.getApduFilter();
+    				ApduFilter[] filter2 = channelAccess.getApduFilter();
+    				if( filter == null || filter.length == 0 ){
+    					ca.setApduFilter(filter2);
+    				} else if( filter2 == null || filter2.length == 0){
+    					ca.setApduFilter(filter);
+    				} else {
+    					ApduFilter[] sum = new ApduFilter[filter.length + filter2.length];
+    					int i = 0;
+    					for( ApduFilter f : filter ){
+    						sum[i++] = f;
+    					}
+    					for( ApduFilter f : filter2 ){
+    						sum[i++] = f;
+    					}
+    					ca.setApduFilter(sum);
+    				}
+    			}
+    		} else {
+                // if APDU access is not allowed the remove also all apdu filter.
+    			ca.setUseApduFilter(false);
+    			ca.setApduFilter(null);
+    		}
+    		Log.v(SmartcardService._TAG, "Merged Access Rule: " + ca.toString());
+    		return;
+    	}
+    	mRuleCache.put(ref_do, channelAccess);
     }
 
 
