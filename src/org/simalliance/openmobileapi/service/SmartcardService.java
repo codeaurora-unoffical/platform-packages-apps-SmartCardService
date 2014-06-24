@@ -698,71 +698,151 @@ public final class SmartcardService extends Service {
 
         private byte[] mAtr;
 
-        public SmartcardServiceSession(SmartcardServiceReader reader){
-            mReader = reader;
-            mAtr = mReader.getAtr();
-            mIsClosed = false;
+        private BroadcastReceiver mNfcExtraEventReceiver;
+
+        private void registerNfcEvent(Context context) {
+            Log.v(_TAG, "register nfc_extras.action event");
+
+            IntentFilter intentFilter = new IntentFilter();
+            intentFilter.addAction("com.android.nfc_extras.action.RF_FIELD_ON_DETECTED");
+            intentFilter.addAction("com.android.nfc_extras.action.RF_FIELD_OFF_DETECTED");
+            intentFilter.addAction("com.android.nfc_extras.action.AID_SELECTED");
+
+            mNfcExtraEventReceiver = new BroadcastReceiver() {
+                @Override
+                public void onReceive(Context context, Intent intent) {
+                    boolean nfcAdapterExtraActionRfFieldOn = false;
+                    boolean nfcAdapterExtraActionRfFieldOff = false;
+                    boolean nfcAdapterExtraActionAidSelected = false;
+                    byte[] aid = null;
+
+                    String action = intent.getAction();
+                    if (action.equals("com.android.nfc_extras.action.RF_FIELD_ON_DETECTED")){
+                        nfcAdapterExtraActionRfFieldOn = true;
+                        aid = new byte[] { 0x00, 0x00, 0x00, 0x00, 0x00 };
+                        Log.i(_TAG, "got RF_FIELD_ON_DETECTED");
+                    }
+                    else if (action.equals("com.android.nfc_extras.action.RF_FIELD_OFF_DETECTED")){
+                        nfcAdapterExtraActionRfFieldOff = true;
+                        aid = new byte[] { 0x00, 0x00, 0x00, 0x00, 0x00 };
+                        Log.i(_TAG, "got RF_FIELD_OFF_DETECTED");
+                    }
+                    else if (action.equals("com.android.nfc_extras.action.AID_SELECTED")){
+                        nfcAdapterExtraActionAidSelected = true;
+                        aid = intent.getByteArrayExtra("com.android.nfc_extras.extra.AID");
+
+                        StringBuffer strAid = new StringBuffer();
+                        for (int i = 0; i < aid.length; i++) {
+                            String hex = Integer.toHexString(0xFF & aid[i]);
+                            if (hex.length() == 1)
+                                strAid.append('0');
+                            strAid.append(hex);
+                        }
+                        Log.i(_TAG, "got AID_SELECTED AID:" + strAid);
+                    }
+
+                    try
+                    {
+                        if( nfcAdapterExtraActionRfFieldOn ||
+                            nfcAdapterExtraActionRfFieldOff ||
+                            nfcAdapterExtraActionAidSelected) {
+                            Log.i(_TAG, "Checking access rules for NFC event");
+
+                            AccessControlEnforcer ac = mReader.getTerminal().getAccessControlEnforcer();
+                            if( ac != null ) {
+                                String [] packageNames = new String[] {getPackageNameFromCallingUid( Binder.getCallingUid())};
+                                ac.setPackageManager(getPackageManager());
+                                boolean [] nfcEventAccess = ac.isNFCEventAllowed(aid, packageNames, (ISmartcardServiceCallback)null );
+                                if (nfcEventAccess[0]) {
+                                    Log.i(_TAG, "granted");
+                                    intent.setPackage(packageNames[0]);
+                                    context.sendBroadcast(intent);
+                                } else {
+                                    Log.i(_TAG, "denied");
+                                }
+                            }
+                        }
+                    } catch (Exception e) {
+                        Log.v(_TAG, "isNFCEventAllowed Exception: " + e.getMessage() );
+                    }
+                }
+            };
+            context.registerReceiver(mNfcReceiver, intentFilter);
         }
 
-        @Override
-        public ISmartcardServiceReader getReader() throws RemoteException {
-            return mReader;
+    	public SmartcardServiceSession(SmartcardServiceReader reader){
+    		mReader = reader;
+    		mAtr = mReader.getAtr();
+    		mIsClosed = false;
+                registerNfcEvent(getApplicationContext());
+    	}
+
+		@Override
+		public ISmartcardServiceReader getReader() throws RemoteException {
+			return mReader;
+		}
+
+		@Override
+		public byte[] getAtr() throws RemoteException {
+			return mAtr;
         }
 
-        @Override
-        public byte[] getAtr() throws RemoteException {
-            return mAtr;
-        }
-
-        @Override
-        public void close(SmartcardError error) throws RemoteException {
+		@Override
+		public void close(SmartcardError error) throws RemoteException {
             clearError(error);
             if (mReader == null) {
                 return;
             }
             try {
-                mReader.closeSession(this);
-            } catch (CardException e) {
-                setError(error,e);
-            }
-        }
+				mReader.closeSession(this);
 
-        @Override
-        public void closeChannels(SmartcardError error) throws RemoteException {
-            synchronized (mLock) {
-
-                Iterator<Channel>iter = mChannels.iterator();
-                try {
-                    while(iter.hasNext()) {
-                        Channel channel = iter.next();
-                        if (channel != null && !channel.isClosed()) {
-                            try {
-                                channel.close();
-                                // close changes indirectly mChannels, so we need a new iterator.
-                                iter = mChannels.iterator();
-                            } catch (Exception ignore) {
-                                Log.e(_TAG, "ServiceSession channel - close Exception " + ignore.getMessage());
-                            }
-                            channel.setClosed();
-                        }
-                    }
-                    mChannels.clear();
-                } catch( Exception e ) {
-                    Log.e(_TAG, "ServiceSession closeChannels Exception " + e.getMessage());
+                if(mNfcExtraEventReceiver!= null) {
+                    Log.v(_TAG, "unregister nfc_extras.action event");
+                    getApplicationContext().unregisterReceiver(mNfcExtraEventReceiver);
+                    mNfcExtraEventReceiver = null;
                 }
-            }
-        }
 
-        @Override
-        public boolean isClosed() throws RemoteException {
+			} catch (CardException e) {
+				setError(error,e);
+			}
+		}
 
-            return mIsClosed;
-        }
+		@Override
+		public void closeChannels(SmartcardError error) throws RemoteException {
+	        synchronized (mLock) {
 
-        @Override
-        public ISmartcardServiceChannel openBasicChannel(
-                ISmartcardServiceCallback callback, SmartcardError error)
-                throws RemoteException {
+	        	Iterator<Channel>iter = mChannels.iterator();
+	        	try {
+		            while(iter.hasNext()) {
+		            	Channel channel = iter.next();
+		                if (channel != null && !channel.isClosed()) {
+		                    try {
+		                        channel.close();
+		                        // close changes indirectly mChannels, so we need a new iterator.
+		                        iter = mChannels.iterator();
+		                    } catch (Exception ignore) {
+		    	    	        Log.e(_TAG, "ServiceSession channel - close Exception " + ignore.getMessage());
+		                    }
+		                    channel.setClosed();
+		                }
+		            }
+		            mChannels.clear();
+	        	} catch( Exception e ) {
+	    	        Log.e(_TAG, "ServiceSession closeChannels Exception " + e.getMessage());
+	        	}
+	        }
+		}
+
+		@Override
+		public boolean isClosed() throws RemoteException {
+
+			return mIsClosed;
+		}
+
+		@Override
+		public ISmartcardServiceChannel openBasicChannel(
+				ISmartcardServiceCallback callback, SmartcardError error)
+				throws RemoteException {
             return openBasicChannelAid( null, callback, error);
         }
 
@@ -808,7 +888,10 @@ public final class SmartcardService extends Service {
 
                 channelAccess.setCallingPid(Binder.getCallingPid());
 
-
+                if (true) {
+                    Log.v(_TAG, "OpenBasicChannel(AID): not allowed");
+                    return null;
+                }
 
                 Log.v(_TAG, "OpenBasicChannel(AID)");
                 Channel channel = null;
