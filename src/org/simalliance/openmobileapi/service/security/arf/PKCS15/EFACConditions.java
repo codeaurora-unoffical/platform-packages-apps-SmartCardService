@@ -120,12 +120,12 @@ public class EFACConditions extends EF {
             // See GPAC Chapter 7.1.7
             // See Examples in Annex C of GPAC
             channelAccess = new ChannelAccess();
-        	channelAccess.setAccess(ChannelAccess.ACCESS.ALLOWED, "");
-        	channelAccess.setApduAccess(ChannelAccess.ACCESS.ALLOWED);
-        	channelAccess.setNFCEventAccess(ChannelAccess.ACCESS.ALLOWED);
-        	channelAccess.setUseApduFilter(false);
+            channelAccess.setAccess(ChannelAccess.ACCESS.ALLOWED, "");
+            channelAccess.setApduAccess(ChannelAccess.ACCESS.ALLOWED);
+            channelAccess.setNFCEventAccess(ChannelAccess.ACCESS.ALLOWED);
+            channelAccess.setUseApduFilter(false);
 
-        	if ( DER.parseTLV(ASN1.TAG_Sequence) > 0 ) {
+            if ( DER.parseTLV(ASN1.TAG_Sequence) > 0 ) {
                     byte[] tempTLVData = DER.getTLVData();
                     DERParser derRule = new DERParser( tempTLVData);
 

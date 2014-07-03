@@ -77,18 +77,18 @@ class Channel implements IChannel, IBinder.DeathRecipient {
         } catch (RemoteException e) {
             Log.e(SmartcardService._TAG, "Failed to register client callback");
         }
-		if (this.mSelectResponse != null) {
-			Log.i(_TAG, "Channel(): mSelectResponse = " + ByteArrayToString(this.mSelectResponse, 0));
-		}
+        if (this.mSelectResponse != null) {
+            Log.i(_TAG, "Channel(): mSelectResponse = " + ByteArrayToString(this.mSelectResponse, 0));
+        }
     }
 
     private String ByteArrayToString(byte[] b, int start) {
-		StringBuffer s = new StringBuffer();
-		for (int i = start; i < b.length; i++) {
-			s.append(Integer.toHexString(0x100 + (b[i] & 0xff)).substring(1));
-		}
-		return s.toString();
-	}
+        StringBuffer s = new StringBuffer();
+        for (int i = start; i < b.length; i++) {
+            s.append(Integer.toHexString(0x100 + (b[i] & 0xff)).substring(1));
+        }
+        return s.toString();
+    }
 
     public void binderDied() {
         // Close this channel if the client died.
@@ -198,19 +198,19 @@ class Channel implements IChannel, IBinder.DeathRecipient {
 
 
         if (command.length < 4) {
-			throw new IllegalArgumentException(
-					" command must not be smaller than 4 bytes");
-		}
-		if (((command[0] & (byte) 0x80) == 0)
-				&& ((byte) (command[0] & (byte) 0x60) != (byte) 0x20)) {
-			// ISO command
-			if (command[1] == (byte) 0x70) {
-				throw new IllegalArgumentException(
-						"MANAGE CHANNEL command not allowed");
-			}
-			if ((command[1] == (byte) 0xA4) && (command[2] == (byte) 0x04)) {
-				throw new IllegalArgumentException("SELECT command not allowed");
-			}
+            throw new IllegalArgumentException(
+                    " command must not be smaller than 4 bytes");
+        }
+        if (((command[0] & (byte) 0x80) == 0)
+                && ((byte) (command[0] & (byte) 0x60) != (byte) 0x20)) {
+            // ISO command
+            if (command[1] == (byte) 0x70) {
+                throw new IllegalArgumentException(
+                        "MANAGE CHANNEL command not allowed");
+            }
+            if ((command[1] == (byte) 0xA4) && (command[2] == (byte) 0x04)) {
+                throw new IllegalArgumentException("SELECT command not allowed");
+            }
 
                         if (command.length > 4) {
                             int sizeOfLcField = 0;
@@ -307,23 +307,23 @@ class Channel implements IChannel, IBinder.DeathRecipient {
                                 }
                             }
                         }
-		} else {
-			// GlobalPlatform command
-		}
+        } else {
+            // GlobalPlatform command
+        }
 
-		// set channel number bits
-		command[0] = setChannelToClassByte(command[0], mChannelNumber);
+        // set channel number bits
+        command[0] = setChannelToClassByte(command[0], mChannelNumber);
 
-		byte[] rsp = getTerminal().transmit(command, 2, 0, 0, null);
+        byte[] rsp = getTerminal().transmit(command, 2, 0, 0, null);
 
-		return rsp;
-	}
+        return rsp;
+    }
 
-	public boolean selectNext() throws CardException {
+    public boolean selectNext() throws CardException {
 
-		if( mChannelAccess == null ){
-			throw new AccessControlException( " Channel access not set.");
-		}
+        if( mChannelAccess == null ){
+            throw new AccessControlException( " Channel access not set.");
+        }
         if (mChannelAccess.getCallingPid() !=  mCallingPid) {
 
 
