@@ -628,97 +628,97 @@ public abstract class Terminal implements ITerminal {
         }
 
         public byte[] getAtr(){
-        	return Terminal.this.getAtr();
+            return Terminal.this.getAtr();
         }
 
-		@Override
-		public String getName(SmartcardError error) throws RemoteException {
+        @Override
+        public String getName(SmartcardError error) throws RemoteException {
             SmartcardService.clearError(error);
-			return Terminal.this.getName();
-		}
+            return Terminal.this.getName();
+        }
 
-		@Override
-		public boolean isSecureElementPresent(SmartcardError error)
-				throws RemoteException {
-			SmartcardService.clearError(error);
-			try {
-				return Terminal.this.isCardPresent();
-			} catch (Exception e) {
-				SmartcardService.setError(error, e);
-			}
-			return false;
-		}
+        @Override
+        public boolean isSecureElementPresent(SmartcardError error)
+                throws RemoteException {
+            SmartcardService.clearError(error);
+            try {
+                return Terminal.this.isCardPresent();
+            } catch (Exception e) {
+                SmartcardService.setError(error, e);
+            }
+            return false;
+        }
 
-		@Override
-		public ISmartcardServiceSession openSession(SmartcardError error)
-				throws RemoteException {
-			SmartcardService.clearError(error);
-	        try {
-				if (!Terminal.this.isCardPresent()){
+        @Override
+        public ISmartcardServiceSession openSession(SmartcardError error)
+                throws RemoteException {
+            SmartcardService.clearError(error);
+            try {
+                if (!Terminal.this.isCardPresent()){
                                     throw new RemoteException ("Secure Element is not presented.");
-				}
-			} catch (CardException e) {
-				SmartcardService.setError(error,e);
-				return null;
-			}
+                }
+            } catch (CardException e) {
+                SmartcardService.setError(error,e);
+                return null;
+            }
 
-	        synchronized (mLock) {
-	        	try {
-		        	mService.initializeAccessControl(Terminal.this.getName(), null);
-	        	} catch (Exception e ){
-					SmartcardService.setError(error,e);
-					return null; // Reader.openSession() will throw an IOException when session is null
-	        	}
-	        	SmartcardServiceSession session = mService.new SmartcardServiceSession(this);
-	            mSessions.add(session);
+            synchronized (mLock) {
+                try {
+                    mService.initializeAccessControl(Terminal.this.getName(), null);
+                } catch (Exception e ){
+                    SmartcardService.setError(error,e);
+                    return null; // Reader.openSession() will throw an IOException when session is null
+                }
+                SmartcardServiceSession session = mService.new SmartcardServiceSession(this);
+                mSessions.add(session);
 
-	            return session;
-	        }
-		}
+                return session;
+            }
+        }
 
-		@Override
-		public void closeSessions(SmartcardError error) throws RemoteException {
+        @Override
+        public void closeSessions(SmartcardError error) throws RemoteException {
 
-			SmartcardService.clearError(error);
-	        synchronized (mLock) {
-	            for (SmartcardServiceSession session : mSessions) {
-	                if (session != null && !session.isClosed()) {
-	                    session.closeChannels(error);
-	                    session.setClosed();
-	                }
-	            }
-	            mSessions.clear();
-	        }
-		}
+            SmartcardService.clearError(error);
+            synchronized (mLock) {
+                for (SmartcardServiceSession session : mSessions) {
+                    if (session != null && !session.isClosed()) {
+                        session.closeChannels(error);
+                        session.setClosed();
+                    }
+                }
+                mSessions.clear();
+            }
+        }
 
-	    /**
-	     * Closes the defined Session and all its allocated resources. <br>
-	     * After calling this method the Session can not be used for the
-	     * communication with the Secure Element any more.
-	     *
-	     * @param session the Session that should be closed
-	     * @throws RemoteException
-	     * @throws CardException
-	     * @throws NullPointerException if Session is null
-	     */
-	    void closeSession(SmartcardServiceSession session) throws RemoteException, CardException {
-	        if (session == null) {
-	            throw new NullPointerException("session is null");
-	        }
-	        synchronized (mLock) {
-				if (!session.isClosed()) {
-					SmartcardError error = new SmartcardError();
-				    session.closeChannels(error);
-				    error.throwException();
-				    session.setClosed();
-				}
-	            mSessions.remove(session);
-	        }
-	    }
+        /**
+         * Closes the defined Session and all its allocated resources. <br>
+         * After calling this method the Session can not be used for the
+         * communication with the Secure Element any more.
+         *
+         * @param session the Session that should be closed
+         * @throws RemoteException
+         * @throws CardException
+         * @throws NullPointerException if Session is null
+         */
+        void closeSession(SmartcardServiceSession session) throws RemoteException, CardException {
+            if (session == null) {
+                throw new NullPointerException("session is null");
+            }
+            synchronized (mLock) {
+                if (!session.isClosed()) {
+                    SmartcardError error = new SmartcardError();
+                    session.closeChannels(error);
+                    error.throwException();
+                    session.setClosed();
+                }
+                mSessions.remove(session);
+            }
+        }
 
-	    Terminal getTerminal() {
-	    	return Terminal.this;
-	    }
+        Terminal getTerminal() {
+            return Terminal.this;
+        }
     }
 
     public void dump(PrintWriter writer, String prefix) {

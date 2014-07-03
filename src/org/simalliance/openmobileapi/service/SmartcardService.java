@@ -983,47 +983,47 @@ public final class SmartcardService extends Service {
             try {
 				mReader.closeSession(this);
 
-			} catch (CardException e) {
-				setError(error,e);
-			}
-		}
+            } catch (CardException e) {
+                setError(error,e);
+            }
+        }
 
-		@Override
-		public void closeChannels(SmartcardError error) throws RemoteException {
-	        synchronized (mLock) {
+        @Override
+        public void closeChannels(SmartcardError error) throws RemoteException {
+            synchronized (mLock) {
 
-	        	Iterator<Channel>iter = mChannels.iterator();
-	        	try {
-		            while(iter.hasNext()) {
-		            	Channel channel = iter.next();
-		                if (channel != null && !channel.isClosed()) {
-		                    try {
-		                        channel.close();
-		                        // close changes indirectly mChannels, so we need a new iterator.
-		                        iter = mChannels.iterator();
-		                    } catch (Exception ignore) {
-		    	    	        Log.e(_TAG, "ServiceSession channel - close Exception " + ignore.getMessage());
-		                    }
-		                    channel.setClosed();
-		                }
-		            }
-		            mChannels.clear();
-	        	} catch( Exception e ) {
-	    	        Log.e(_TAG, "ServiceSession closeChannels Exception " + e.getMessage());
-	        	}
-	        }
-		}
+                Iterator<Channel>iter = mChannels.iterator();
+                try {
+                    while(iter.hasNext()) {
+                        Channel channel = iter.next();
+                        if (channel != null && !channel.isClosed()) {
+                            try {
+                                channel.close();
+                                // close changes indirectly mChannels, so we need a new iterator.
+                                iter = mChannels.iterator();
+                            } catch (Exception ignore) {
+                                Log.e(_TAG, "ServiceSession channel - close Exception " + ignore.getMessage());
+                            }
+                            channel.setClosed();
+                        }
+                    }
+                    mChannels.clear();
+                } catch( Exception e ) {
+                    Log.e(_TAG, "ServiceSession closeChannels Exception " + e.getMessage());
+                }
+            }
+        }
 
-		@Override
-		public boolean isClosed() throws RemoteException {
+        @Override
+        public boolean isClosed() throws RemoteException {
 
-			return mIsClosed;
-		}
+            return mIsClosed;
+        }
 
-		@Override
-		public ISmartcardServiceChannel openBasicChannel(
-				ISmartcardServiceCallback callback, SmartcardError error)
-				throws RemoteException {
+        @Override
+        public ISmartcardServiceChannel openBasicChannel(
+                ISmartcardServiceCallback callback, SmartcardError error)
+                throws RemoteException {
             return openBasicChannelAid( null, callback, error);
         }
 
