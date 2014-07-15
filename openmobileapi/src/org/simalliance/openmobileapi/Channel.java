@@ -69,9 +69,9 @@ public class Channel {
             if (mChannel.isClosed())
                 return;
 
-			mChannel.close(error);
-		} catch (RemoteException e) {
-		}
+            mChannel.close(error);
+        } catch (RemoteException e) {
+        }
         SEService.checkForException(error);
     }
 
