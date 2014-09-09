@@ -212,6 +212,16 @@ public class SEService {
         }
     }
 
+    /**
+     * Returns the version of the OpenMobile API specification this
+     * implementation is based on.
+     *
+     * @return Version String.
+     */
+    public String getVersion() {
+        return "2.04";
+    }
+
     // ******************************************************************
     // package private methods
     // ******************************************************************
