@@ -98,10 +98,12 @@ public class UiccTerminal extends Terminal {
     protected void internalConnect() throws CardException {
         if (SmartcardService.mIsMultiSimEnabled) {
             if (mMsimManager == null) {
+                Log.e(_TAG, "internalConnect(): throw CardException");
                 throw new CardException("Cannot connect to MSIM Telephony Service");
             }
         } else {
             if (manager == null) {
+                Log.e(_TAG, "internalConnect(): throw CardException");
                 throw new CardException("Cannot connect to Telephony Service");
             }
         }
@@ -180,11 +182,13 @@ public class UiccTerminal extends Terminal {
                     return StringToByteArray(response);
                 }
             } catch (Exception ex) {
+                Log.e(_TAG, "internalTransmit(): throw CardException");
                 throw new CardException("transmit command failed");
             }
 
         } else {
             if ((channelNumber > 0) && (channelId[channelNumber] == 0)) {
+                Log.e(_TAG, "internalTransmit(): throw CardException(channel not open)");
                 throw new CardException("channel not open");
             }
 
@@ -197,6 +201,7 @@ public class UiccTerminal extends Terminal {
                     return StringToByteArray(response);
                 }
             } catch (Exception ex) {
+                Log.e(_TAG, "internalTransmit(): throw CardException(transmit command failed)");
                 throw new CardException("transmit command failed");
             }
         }
@@ -220,6 +225,7 @@ public class UiccTerminal extends Terminal {
                 return atr;
             }
         } catch (Exception e) {
+            Log.e(_TAG, "getAtr(): throw IllegalStateException");
             throw new IllegalStateException("internal error: getAtr() execution: "
                     + e.getCause());
         }
@@ -248,8 +254,10 @@ public class UiccTerminal extends Terminal {
                 case (byte)0xB0: ins=176; break;
                 case (byte)0xB2: ins=178; break;
                 case (byte)0xA4: ins=192;  p1=0; p2=0; p3=15; break;
-                default:
+                default: {
+                    Log.e(_TAG, "simIOExchange(): throw SecureElementException");
                     throw new SecureElementException("Unknown SIM_IO command");
+                }
             }
 
             if(filePath != null && filePath.length() > 0) {
@@ -264,8 +272,10 @@ public class UiccTerminal extends Terminal {
                 return ret;
             }
         } catch (Exception e) {
+            Log.e(_TAG, "simIOExchange(): throw Exception(SIM IO access error)");
             throw new Exception("SIM IO access error");
-    }}
+        }
+    }
 
 
     /**
@@ -295,6 +305,7 @@ public class UiccTerminal extends Terminal {
     protected int internalOpenLogicalChannel() throws Exception {
 
         mSelectResponse = null;
+        Log.e(_TAG, "internalOpenLogicalChannel(): throw UnsupportedOperationException");
         throw new UnsupportedOperationException(
                 "open channel without select AID is not supported by UICC");
     }
@@ -303,10 +314,11 @@ public class UiccTerminal extends Terminal {
     protected int internalOpenLogicalChannel(byte[] aid) throws Exception {
 
         if (aid == null) {
+            Log.e(_TAG, "internalOpenLogicalChannel(aid): throw NullPointerException");
             throw new NullPointerException("aid must not be null");
         }
         mSelectResponse = null;
-        for (int i = 1; i < channelId.length; i++)
+        for (int i = 1; i < channelId.length; i++) {
             if (channelId[i] == 0) {
                 if (SmartcardService.mIsMultiSimEnabled) {
                     channelId[i] = mMsimManager.openIccLogicalChannel(ByteArrayToString(aid, 0), mUiccSlot);
@@ -324,12 +336,15 @@ public class UiccTerminal extends Terminal {
                     }
 
                     if (lastError == 2) {
+                        Log.e(_TAG, "internalOpenLogicalChannel(aid): throw MissingResourceException");
                         throw new MissingResourceException(
                                 "all channels are used", "", "");
                     }
                     if (lastError == 3) {
+                        Log.e(_TAG, "internalOpenLogicalChannel(aid): throw NoSuchElementException");
                         throw new NoSuchElementException("applet not found");
                     }
+                    Log.e(_TAG, "internalOpenLogicalChannel(aid): throw CardException");
                     throw new CardException("open channel failed");
                 }
                 else{
@@ -343,13 +358,16 @@ public class UiccTerminal extends Terminal {
                         getResponseCmd[0] = (byte) (0x40 | (byte)(i - 4));
                     } else {
                         channelId[i] = 0;
+                        Log.e(_TAG, "internalOpenLogicalChannel(aid): throw CardException(Channel number index must be within [1..19])");
                         throw new CardException( "Channel number index must be within [1..19]");
                     }
-                        mSelectResponse = internalTransmit(getResponseCmd);
-                    }
+                    mSelectResponse = internalTransmit(getResponseCmd);
+                }
 
                 return i;
             }
+        }
+        Log.e(_TAG, "internalOpenLogicalChannel(aid): throw MissingResourceException(out of channels)");
         throw new MissingResourceException("out of channels", "","");
     }
 
@@ -360,19 +378,23 @@ public class UiccTerminal extends Terminal {
             return;
         }
         if (channelId[channelNumber] == 0) {
+            Log.e(_TAG, "internalCloseLogicalChannel(): throw CardException(channel not open)");
             throw new CardException("channel not open");
         }
         try {
             if (SmartcardService.mIsMultiSimEnabled) {
                 if (mMsimManager.closeIccLogicalChannel(channelId[channelNumber], mUiccSlot) == false) {
+                    Log.e(_TAG, "internalCloseLogicalChannel(): throw CardException");
                     throw new CardException("close channel failed");
                 }
             } else {
                 if (manager.closeIccLogicalChannel(channelId[channelNumber]) == false) {
+                    Log.e(_TAG, "internalCloseLogicalChannel(): throw CardException");
                     throw new CardException("close channel failed");
                 }
             }
         } catch (Exception ex) {
+            Log.e(_TAG, "internalCloseLogicalChannel(): throw CardException");
             throw new CardException("close channel failed");
         }
         channelId[channelNumber] = 0;
