@@ -374,6 +374,7 @@ public final class SmartcardService extends Service {
         intentFilter.addAction("com.android.nfc_extras.action.RF_FIELD_OFF_DETECTED");
         intentFilter.addAction("com.android.nfc_extras.action.AID_SELECTED");
         intentFilter.addAction("org.simalliance.openmobileapi.service.ACTION_CHECK_CERT");
+        intentFilter.addAction("org.simalliance.openmobileapi.service.ACTION_CHECK_X509");
 
         mNfcEventReceiver = new BroadcastReceiver() {
             @Override
@@ -384,7 +385,6 @@ public final class SmartcardService extends Service {
                 byte[] aid = null;
                 byte[] data = null;
                 String seName = null;
-
                 String action = intent.getAction();
 
                 if (action.equals("com.android.nfc_extras.action.RF_FIELD_ON_DETECTED")){
@@ -396,6 +396,44 @@ public final class SmartcardService extends Service {
                     nfcAdapterExtraActionRfFieldOff = true;
                     aid = new byte[] { 0x00, 0x00, 0x00, 0x00, 0x00 };
                     Log.i(_TAG, "got RF_FIELD_OFF_DETECTED");
+                }
+                else if (action.equals("org.simalliance.openmobileapi.service.ACTION_CHECK_X509")){
+                    Log.i(_TAG, "got ACTION_CHECK_X509");
+                    String pkg = intent.getStringExtra("org.simalliance.openmobileapi.service.EXTRA_PKG");
+                    seName = intent.getStringExtra("org.simalliance.openmobileapi.service.EXTRA_SE_NAME");
+
+                    NfcQcomAdapter nfcQcomAdapter = NfcQcomAdapter.getNfcQcomAdapter(context);
+                    if (nfcQcomAdapter == null) {
+                        Log.i(_TAG, "Couldn't get NfcQcomAdapter");
+                        return;
+                    }
+
+                    SmartcardError error = new SmartcardError();
+                    ITerminal terminal = getTerminal(seName, error);
+                    if (terminal == null) {
+                        Log.i(_TAG, "Couldn't get terminal for " + seName);
+                        return;
+                    }
+
+                    AccessControlEnforcer acEnforcer;
+                    acEnforcer = terminal.getAccessControlEnforcer();
+                    if( acEnforcer == null ) {
+                        Log.i(_TAG, "Couldn't get AccessControlEnforcer for " + seName);
+                        nfcQcomAdapter.notifyCheckCertResult(false);
+                        return;
+                    }
+
+                    try {
+                       if (acEnforcer.hasCertificate(pkg) && acEnforcer.Checkx509Certif(pkg)) {
+                            nfcQcomAdapter.notifyCheckCertResult(true);
+                       } else {
+                            nfcQcomAdapter.notifyCheckCertResult(false);
+                       }
+                    } catch (Exception e) {
+                        nfcQcomAdapter.notifyCheckCertResult(false);
+                    }
+
+                    return;
                 }
                 else if (action.equals("org.simalliance.openmobileapi.service.ACTION_CHECK_CERT")){
                     Log.i(_TAG, "got ACTION_CHECK_CERT");
@@ -1139,6 +1177,17 @@ public final class SmartcardService extends Service {
                     return null;
                 }
 
+                /*
+                 * OpenBasicChannel shall always return null w/o security exception.
+                 */
+                if (true) {
+                    Log.v(_TAG, "OpenBasicChannel(AID): not allowed");
+                    return null;
+                }
+
+                /*
+                 * Keep below for reference.
+                 */
 
                 String packageName = getPackageNameFromCallingUid( Binder.getCallingUid());
                 Log.v(_TAG, "Enable access control on basic channel for " + packageName);
@@ -1151,10 +1200,6 @@ public final class SmartcardService extends Service {
 
                 channelAccess.setCallingPid(Binder.getCallingPid());
 
-                if (true) {
-                    Log.v(_TAG, "OpenBasicChannel(AID): not allowed");
-                    return null;
-                }
 
                 Log.v(_TAG, "OpenBasicChannel(AID)");
                 Channel channel = null;
