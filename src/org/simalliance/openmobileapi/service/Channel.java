@@ -351,27 +351,39 @@ class Channel implements IChannel, IBinder.DeathRecipient {
         if (((sw & 0xF000) == 0x9000) || ((sw & 0xFF00) == 0x6200)
                  || ((sw & 0xFF00) == 0x6300)){
 
-            // check access control with selected AID
-            byte[] selectedAid = getTerminal().getSelectedAid(mBufferSelectResponse);
-            try {
-                Log.v(_TAG, "check access control for selected AID");
-                this.mChannelAccess = getTerminal().setUpChannelAccess(
-                            null,
-                            selectedAid,
-                            this.mChannelAccess.getPackageName(),
-                            false,
-                            this.mCallback );
-                Log.v(_TAG, "Access control successfully enabled for selected AID");
-                this.mChannelAccess.setCallingPid(Binder.getCallingPid());
-                this.hasSelectedAid(true, selectedAid);
-            } catch (Exception e) {
-                try {
-                    getTerminal().closeChannel(this);
-                    this.mIsClosed = true;
-                } finally {
-                    mBinder.unlinkToDeath(this, 0);
+            if (!SmartcardService.mIsisConfig.equals("none")) {
+                // check access control with selected AID
+                byte[] selectedAid = getTerminal().getSelectedAid(mBufferSelectResponse);
+
+                if (selectedAid == null) {
+                    try {
+                        getTerminal().closeChannel(this);
+                        this.mIsClosed = true;
+                    } finally {
+                        mBinder.unlinkToDeath(this, 0);
+                    }
+                    throw new SecurityException("selected AID is not found");
                 }
-                throw new SecurityException("selected AID is not allowed");
+
+                try {
+                    Log.v(_TAG, "check access control for selected AID");
+                    this.mChannelAccess = getTerminal().setUpChannelAccess(
+                                null,
+                                selectedAid,
+                                this.mChannelAccess.getPackageName(),
+                                false,
+                                this.mCallback );
+                    Log.v(_TAG, "Access control successfully enabled for selected AID");
+                    this.mChannelAccess.setCallingPid(Binder.getCallingPid());
+                } catch (Exception e) {
+                    try {
+                        getTerminal().closeChannel(this);
+                        this.mIsClosed = true;
+                    } finally {
+                        mBinder.unlinkToDeath(this, 0);
+                    }
+                    throw new SecurityException("selected AID is not allowed");
+                }
             }
 
             mSelectResponse = mBufferSelectResponse.clone();
