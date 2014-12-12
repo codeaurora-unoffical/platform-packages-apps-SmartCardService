@@ -231,7 +231,7 @@ public final class SmartcardService extends Service {
                               multiSimConfig.equals("tsts"));
 
         mIsisConfig = SystemProperties.get("persist.nfc.smartcard.isis");
-        if(mIsisConfig == null) {
+        if(mIsisConfig == null || mIsisConfig.equals("")) {
             mIsisConfig = "none";
         }
         Log.v(_TAG, "mIsisConfig = " + mIsisConfig);
@@ -458,6 +458,11 @@ public final class SmartcardService extends Service {
                         Log.i(_TAG, "Couldn't get AccessControlEnforcer for " + seName);
                         nfcQcomAdapter.notifyCheckCertResult(false);
                         return;
+                    } else {
+                        /*
+                         * PackageManager needs to be initialized for the access control enforcer
+                         */
+                        acEnforcer.setPackageManager(getPackageManager());
                     }
 
                     try {
