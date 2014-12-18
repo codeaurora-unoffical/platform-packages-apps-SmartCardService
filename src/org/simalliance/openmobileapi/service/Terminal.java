@@ -664,8 +664,11 @@ public abstract class Terminal implements ITerminal {
 
             synchronized (mLock) {
                 try {
-                    if (mService.initializeAccessControl(Terminal.this.getName(), null) == false) {
-                        if (!SmartcardService.mIsisConfig.equals("none")) {
+                    /*
+                     * Except for Soft-card do not check refreshTag on openSession
+                     */
+                    if (!SmartcardService.mIsisConfig.equals("none")) {
+                        if (mService.initializeAccessControl(Terminal.this.getName(), null) == false) {
                             return null; // Reader.openSession() will throw an IOException when session is null
                         }
                     }
