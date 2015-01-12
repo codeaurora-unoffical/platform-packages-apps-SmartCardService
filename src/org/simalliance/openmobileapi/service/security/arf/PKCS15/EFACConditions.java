@@ -226,7 +226,7 @@ public class EFACConditions extends EF {
      * Stores a restricted list of certificate hashes
      * @param path Path of the "EF_ACConditions" file
      */
-    public void addRestrictedHashes(byte[] path) {
+    public void addRestrictedHashes(byte[] path) throws PKCS15Exception {
         try {
             Log.v(TAG,"Reading and analysing EF_ACConditions...");
             if (selectFile(path) == APDU_SUCCESS) {
@@ -238,6 +238,7 @@ public class EFACConditions extends EF {
         } catch (Exception e) {
             /*Nothing to do*/
             Log.e( TAG, "Exception: " + e.getMessage());
+            throw new PKCS15Exception (e.getMessage());
         }
     }
 
@@ -245,7 +246,7 @@ public class EFACConditions extends EF {
      * Stores a restricted list of certificate hashes
      * @param path Path of the "EF_ACConditions" file
      */
-    public void addRestrictedHashesFromData(byte[] data) {
+    public void addRestrictedHashesFromData(byte[] data) throws PKCS15Exception {
         try {
             Log.v(TAG,"Analysing cached EF_ACConditions data...");
             if( data != null ) {
@@ -257,6 +258,7 @@ public class EFACConditions extends EF {
         } catch (Exception e) {
             /*Nothing to do*/
             Log.e( TAG, "Exception: " + e.getMessage());
+            throw new PKCS15Exception (e.getMessage());
         }
     }
 
