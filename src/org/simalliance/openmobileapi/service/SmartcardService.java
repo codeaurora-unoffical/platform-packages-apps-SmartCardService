@@ -1177,34 +1177,27 @@ public final class SmartcardService extends Service {
                     channel = mReader.getTerminal().openBasicChannel(this, aid, callback);
                 }
 
-                /* check if the same AID has been selected */
-                byte[] selectResponse = mReader.getTerminal().getSelectResponse();
-                byte[] selectedAid = mReader.getTerminal().getSelectedAid(selectResponse);
+                if (!mIsisConfig.equals("none")) {
+                    /* check if the same AID has been selected */
+                    byte[] selectResponse = mReader.getTerminal().getSelectResponse();
+                    byte[] selectedAid = mReader.getTerminal().getSelectedAid(selectResponse);
 
-                if (selectedAid == null) {
-                    Log.v(_TAG, "Cannot find selected AID");
-                    if (channel != null) {
-                        try {
-                            mReader.getTerminal().closeChannel(channel);
-                        } catch (Exception ignore) {
-                        }
+                    if (selectedAid == null) {
+                        // assume the same AID is selected
+                        Log.v(_TAG, "Cannot find selected AID");
+                    } else if (!Arrays.equals(aid, selectedAid)) {
+                        Log.v(_TAG, "Different AID is selected!!!");
+                        Log.v(_TAG, "Enable access control on basic channel for " + packageName);
+                        channelAccess = mReader.getTerminal().setUpChannelAccess(
+                                null,
+                                selectedAid,
+                                packageName,
+                                false,
+                                callback );
+                        Log.v(_TAG, "Access control successfully enabled.");
+                        channelAccess.setCallingPid(Binder.getCallingPid());
                     }
-                    return null;
                 }
-
-                if (!Arrays.equals(aid, selectedAid)) {
-                    Log.v(_TAG, "Different AID is selected!!!");
-                    Log.v(_TAG, "Enable access control on basic channel for " + packageName);
-                    channelAccess = mReader.getTerminal().setUpChannelAccess(
-                            null,
-                            selectedAid,
-                            packageName,
-                            false,
-                            callback );
-                    Log.v(_TAG, "Access control successfully enabled.");
-                    channelAccess.setCallingPid(Binder.getCallingPid());
-                }
-
 
                 channel.setChannelAccess(channelAccess);
 
@@ -1285,33 +1278,27 @@ public final class SmartcardService extends Service {
                     channel = mReader.getTerminal().openLogicalChannel(this, aid, callback);
                 }
 
-                /* check if the same AID has been selected */
-                byte[] selectResponse = mReader.getTerminal().getSelectResponse();
-                byte[] selectedAid = mReader.getTerminal().getSelectedAid(selectResponse);
+                if (!mIsisConfig.equals("none")) {
+                    /* check if the same AID has been selected */
+                    byte[] selectResponse = mReader.getTerminal().getSelectResponse();
+                    byte[] selectedAid = mReader.getTerminal().getSelectedAid(selectResponse);
 
-                if (selectedAid == null) {
-                    Log.v(_TAG, "Cannot find selected AID");
-                    if (channel != null) {
-                        try {
-                            mReader.getTerminal().closeChannel(channel);
-                        } catch (Exception ignore) {
-                        }
+                    if (selectedAid == null) {
+                        // assume the same AID is selected
+                        Log.v(_TAG, "Cannot find selected AID");
+                    } else if (!Arrays.equals(aid, selectedAid)) {
+                        Log.v(_TAG, "Different AID is selected!!!");
+                        Log.v(_TAG, "Enable access control on logical channel for " + packageName);
+                        channelAccess = mReader.getTerminal().setUpChannelAccess(
+                                null,
+                                selectedAid,
+                                packageName,
+                                false,
+                                callback );
+                        Log.v(_TAG, "Access control successfully enabled.");
+                        channelAccess.setCallingPid(Binder.getCallingPid());
+                        channel.hasSelectedAid(true, selectedAid);
                     }
-                    return null;
-                }
-
-                if (!Arrays.equals(aid, selectedAid)) {
-                    Log.v(_TAG, "Different AID is selected!!!");
-                    Log.v(_TAG, "Enable access control on logical channel for " + packageName);
-                    channelAccess = mReader.getTerminal().setUpChannelAccess(
-                            null,
-                            selectedAid,
-                            packageName,
-                            false,
-                            callback );
-                    Log.v(_TAG, "Access control successfully enabled.");
-                    channelAccess.setCallingPid(Binder.getCallingPid());
-                    channel.hasSelectedAid(true, selectedAid);
                 }
 
                 channel.setChannelAccess(channelAccess);
