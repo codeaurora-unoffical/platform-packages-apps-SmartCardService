@@ -363,7 +363,7 @@ public abstract class Terminal implements ITerminal {
             if (selectedAid != null)
                 basicChannel.hasSelectedAid(true, selectedAid);
             else
-                basicChannel.hasSelectedAid(false, null);
+                basicChannel.hasSelectedAid(true, aid);
 
             mDefaultApplicationSelectedOnBasicChannel = false;
             registerChannel(basicChannel);
@@ -441,7 +441,7 @@ public abstract class Terminal implements ITerminal {
             if (selectedAid != null)
                 logicalChannel.hasSelectedAid(true, selectedAid);
             else
-                logicalChannel.hasSelectedAid(false, null);
+                logicalChannel.hasSelectedAid(true, aid);
 
             registerChannel(logicalChannel);
             return logicalChannel;
@@ -673,7 +673,7 @@ public abstract class Terminal implements ITerminal {
         byte[] selectedAid = null;
         if ((selectResponse != null) &&
             (selectResponse.length == (selectResponse[1] + 4)) && // header(2) + SW(2)
-            (selectResponse[0] == (byte)0x6F)) {
+            ((selectResponse[0] == (byte)0x62) || (selectResponse[0] == (byte)0x6F))) { // FCP or FCI template
             int nextTLV = 2;
             while (selectResponse.length > nextTLV) {
                 if (selectResponse[nextTLV] == (byte)0x84) {
