@@ -98,13 +98,19 @@ public class UiccTerminal extends Terminal {
     protected void internalConnect() throws CardException {
         if (SmartcardService.mIsMultiSimEnabled) {
             if (mMsimManager == null) {
-                Log.e(_TAG, "internalConnect(): throw CardException");
-                throw new CardException("Cannot connect to MSIM Telephony Service");
+                Log.d(_TAG, "Try to rebind telephone service");
+                mMsimManager = ITelephonyMSim.Stub.asInterface(ServiceManager
+                    .getService(Context.MSIM_TELEPHONY_SERVICE));
+                if(mMsimManager == null)
+                    throw new CardException("Cannot connect to MSIM Telephony Service");
             }
         } else {
             if (manager == null) {
-                Log.e(_TAG, "internalConnect(): throw CardException");
-                throw new CardException("Cannot connect to Telephony Service");
+                Log.d(_TAG, "Try to rebind telephone service");
+                manager = ITelephony.Stub.asInterface(ServiceManager
+                    .getService(Context.TELEPHONY_SERVICE));
+                if(manager == null)
+                    throw new CardException("Cannot connect to Telephony Service");
             }
         }
         mIsConnected = true;
