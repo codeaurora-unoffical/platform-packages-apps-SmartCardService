@@ -48,6 +48,8 @@ import org.simalliance.openmobileapi.service.security.ChannelAccess;
  */
 public abstract class Terminal implements ITerminal {
 
+    private static final String TAG = "Terminal";
+
     /** Random number generator used for handle creation. */
     static Random mRandom = new Random();
 
@@ -616,7 +618,23 @@ public abstract class Terminal implements ITerminal {
         throw new Exception("SIM IO error!");
     }
 
+    public boolean[] isNFCEventAllowed (PackageManager packageManager, byte[] aid, String[] packageNames,
+                                        boolean checkRefreshTag, ISmartcardServiceCallback callback){
+        if( mAccessControlEnforcer == null ){
+            mAccessControlEnforcer = new AccessControlEnforcer(this);
+        }
+        if (packageManager != null)
+            mAccessControlEnforcer.setPackageManager(packageManager);
 
+        synchronized (mLock) {
+            try {
+                return (mAccessControlEnforcer.isNFCEventAllowed(aid, packageNames, checkRefreshTag, callback));
+            } catch (CardException e) {
+                Log.e(TAG, "NFC Event AC Exception: " + e.getMessage() );
+                return null;
+            }
+        }
+    }
 
     public ChannelAccess setUpChannelAccess(
             PackageManager packageManager,
