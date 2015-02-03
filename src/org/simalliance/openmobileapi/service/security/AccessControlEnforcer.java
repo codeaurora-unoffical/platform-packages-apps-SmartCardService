@@ -470,11 +470,12 @@ public class AccessControlEnforcer {
     public synchronized boolean[] isNFCEventAllowed(
             byte[] aid,
             String[] packageNames,
+            boolean checkRefreshTag,
             ISmartcardServiceCallback callback)
                     throws CardException
     {
         if( mUseAra || mUseArf ){
-            return internal_isNFCEventAllowed(aid, packageNames, callback);
+            return internal_isNFCEventAllowed(aid, packageNames, checkRefreshTag, callback);
         } else {
             // 2012-09-27
             // if ARA and ARF is not available and terminal DOES NOT belong to a UICC -> mFullAccess is true
@@ -489,6 +490,7 @@ public class AccessControlEnforcer {
 
     private synchronized boolean[] internal_isNFCEventAllowed(byte[] aid,
                String[] packageNames,
+               boolean checkRefreshTag,
                ISmartcardServiceCallback callback)
                        throws CardException
     {
@@ -496,7 +498,10 @@ public class AccessControlEnforcer {
          mNfcEventFlags = new boolean[packageNames.length];
          int i=0;
          ChannelAccess channelAccess = null;
-         updateAccessRuleIfNeed(callback);
+
+         if (checkRefreshTag)
+             updateAccessRuleIfNeed(callback);
+
          for( String packageName : packageNames ) {
              // estimate SHA-1 hash value of the device application's certificate.
                 Certificate[] appCerts;
