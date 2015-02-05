@@ -527,8 +527,16 @@ public class AccessControlEnforcer {
         if( mUseAra && mAraController != null ){
             try {
                 mAraController.initialize(true, callback);
+                mUseArf = false;
+                mFullAccess = false;
             } catch( Exception e ) {
                 Log.e(SmartcardService._TAG, e.getMessage() );
+                if( e instanceof MissingResourceException ) {
+                    throw new MissingResourceException( e.getMessage(), "", "");
+                }
+                if( mAraController.isNoSuchElement() ) {
+                    throw new AccessControlException ("No ARA applet found in: " + mTerminal.getName());
+                }
             }
         } else if( mUseArf && mArfController != null) {
             try {
