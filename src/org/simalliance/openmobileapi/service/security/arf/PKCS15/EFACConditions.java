@@ -122,7 +122,7 @@ public class EFACConditions extends EF {
             channelAccess = new ChannelAccess();
             channelAccess.setAccess(ChannelAccess.ACCESS.ALLOWED, "");
             channelAccess.setApduAccess(ChannelAccess.ACCESS.ALLOWED);
-            channelAccess.setNFCEventAccess(ChannelAccess.ACCESS.ALLOWED);
+            channelAccess.setNFCEventAccess(ChannelAccess.ACCESS.UNDEFINED);
             channelAccess.setUseApduFilter(false);
 
             if ( DER.parseTLV(ASN1.TAG_Sequence) > 0 ) {
@@ -143,6 +143,8 @@ public class EFACConditions extends EF {
                     }
                     else {
                         Log.v(TAG,"No hash included");
+                        //Let's put a null hash, to prioritize any more specific rule.
+                        hash_ref_do = new Hash_REF_DO(null);
                     }
 
                 // 2012-04-16
