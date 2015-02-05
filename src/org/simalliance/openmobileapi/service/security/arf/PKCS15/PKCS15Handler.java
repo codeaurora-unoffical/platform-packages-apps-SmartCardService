@@ -77,6 +77,7 @@ public class PKCS15Handler {
     // SIM Allowed modes:
     private boolean mSimIoAllowed;
     private boolean mSimAllianceAllowed;
+    private boolean mACMFfound = true;
 
     /**
      * Updates "Access Control Rules"
@@ -85,11 +86,21 @@ public class PKCS15Handler {
         throws Exception, PKCS15Exception, SecureElementException
     {
         byte[] ACRulesPath=null;
+        if (!mACMFfound) {
+            mSEHandle.resetAccessRules();
+            mACMainPath  = null;
+            if (mArfChannel!=null)
+                mSEHandle.closeArfChannel();
+            this.initACEntryPoint();
+        }
         try {
             ACRulesPath=mACMainObject.analyseFile();
+            mACMFfound = true;
         } catch (Exception e) {
+            Log.d(TAG, "ACMF Not found !");
             mACMainObject=null;
             mSEHandle.resetAccessRules();
+            mACMFfound = false;
             throw e;
         }
         // Check if rules must be updated
