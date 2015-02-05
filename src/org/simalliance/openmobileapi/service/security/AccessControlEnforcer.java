@@ -269,6 +269,7 @@ public class AccessControlEnforcer {
     public ChannelAccess setUpChannelAccess(
             byte[] aid,
             String packageName,
+            boolean checkRefreshTag,
             ISmartcardServiceCallback callback) {
         ChannelAccess channelAccess = null;
 
@@ -280,7 +281,7 @@ public class AccessControlEnforcer {
         if( mUseAra || mUseArf ){
 
             try {
-                channelAccess = internal_setUpChannelAccess(aid, packageName, callback);
+                channelAccess = internal_setUpChannelAccess(aid, packageName, checkRefreshTag, callback);
             } catch( Exception e ) {
                 if( e instanceof MissingResourceException ) {
                     throw new MissingResourceException( ACCESS_CONTROL_ENFORCER + e.getMessage(), "", "");
@@ -309,7 +310,7 @@ public class AccessControlEnforcer {
         return channelAccess.clone();
     }
 
-    private synchronized ChannelAccess internal_setUpChannelAccess(byte[] aid, String packageName,
+    private synchronized ChannelAccess internal_setUpChannelAccess(byte[] aid, String packageName, boolean checkRefreshTag,
             ISmartcardServiceCallback callback) {
 
         ChannelAccess channelAccess = new ChannelAccess();
@@ -332,7 +333,9 @@ public class AccessControlEnforcer {
                 throw new AccessControlException("Application certificates are invalid or do not exist.");
             }
 
-            updateAccessRuleIfNeed(callback);
+            if (checkRefreshTag)
+                updateAccessRuleIfNeed(callback);
+
             channelAccess = getAccessRule(aid, appCerts, callback );
 
         } catch (Throwable exp) {
