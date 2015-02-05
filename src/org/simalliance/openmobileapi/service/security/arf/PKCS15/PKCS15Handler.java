@@ -110,6 +110,12 @@ public class PKCS15Handler {
                 mACRulesObject=new EFACRules(mSEHandle);
             }
             mSEHandle.clearAccessRuleCache();
+            mACMainPath  = null;
+            if (mArfChannel!=null)
+                mSEHandle.closeArfChannel();
+
+            this.initACEntryPoint();
+
             try {
                 mACRulesObject.analyseFile(ACRulesPath);
             } catch (Exception e) {
