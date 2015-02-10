@@ -87,6 +87,8 @@ import java.util.Set;
 import java.util.TreeMap;
 import java.util.Arrays;
 
+import java.util.MissingResourceException;
+import java.util.NoSuchElementException;
 
 import org.simalliance.openmobileapi.service.security.AccessControlEnforcer;
 import org.simalliance.openmobileapi.service.security.ChannelAccess;
@@ -107,6 +109,17 @@ public final class SmartcardService extends Service {
     public static String _UICC_TERMINAL_EXT[] = new String[] {"1", "2"};
     public static String _eSE_TERMINAL_EXT[] = new String[] {"1", "2"};
     public static String _SD_TERMINAL_EXT[] = new String[] {"1", "2"};
+
+    static String RF_FIELD_ON_DETECTED = "com.android.nfc_extras.action.RF_FIELD_ON_DETECTED";
+    static String RF_FIELD_OFF_DETECTED = "com.android.nfc_extras.action.RF_FIELD_OFF_DETECTED";
+    static String AID_SELECTED = "com.android.nfc_extras.action.AID_SELECTED";
+    static String TRANSACTION_EVENT = "com.gsma.services.nfc.action.TRANSACTION_EVENT";
+    static String ACTION_CHECK_CERT = "org.simalliance.openmobileapi.service.ACTION_CHECK_CERT";
+    static String ACTION_CHECK_X509 = "org.simalliance.openmobileapi.service.ACTION_CHECK_X509";
+    static String ACTION_CHECK_AID = "org.simalliance.openmobileapi.service.ACTION_CHECK_AID";
+    static String EXTRA_PKG = "org.simalliance.openmobileapi.service.EXTRA_PKG";
+    static String EXTRA_SE_NAME = "org.simalliance.openmobileapi.service.EXTRA_SE_NAME";
+    static String EXTRA_AIDS = "org.simalliance.openmobileapi.service.EXTRA_AIDS";
 
     public static boolean mIsMultiSimEnabled;
     public static String mIsisConfig;
@@ -163,6 +176,7 @@ public final class SmartcardService extends Service {
     private BroadcastReceiver mNfcEventReceiver;
     private BroadcastReceiver mPackageUpdateReceiver;
     private BroadcastReceiver mMediaReceiver;
+    private BroadcastReceiver mGsmaServiceEventReceiver;
 
     /* Async task */
     InitialiseTask mInitialiseTask;
@@ -180,10 +194,11 @@ public final class SmartcardService extends Service {
     List<PackageInfo> mInstalledGsmaPackages = new ArrayList<PackageInfo>();
 
     void updatePackageCache() {
+        final String GSMA_PERMISSION = "com.gsma.services.nfc.permission.TRANSACTION_EVENT";
         PackageManager pm = getPackageManager();
         String[] permissions = new String[2];
         permissions[0] = Manifest.permission.NFC;
-        permissions[1] = "com.gsma.services.nfc.permission.TRANSACTION_EVENT";
+        permissions[1] = GSMA_PERMISSION;
         List<PackageInfo> packages = pm.getPackagesHoldingPermissions(permissions, 0);
 
         // packages with GSMA permission, sorted by installed time
@@ -205,7 +220,7 @@ public final class SmartcardService extends Service {
                 }
                 if (packageInfo.requestedPermissions != null) {
                     for (int xx = 0; xx < packageInfo.requestedPermissions.length; xx++) {
-                        if (packageInfo.requestedPermissions[xx].equals("com.gsma.services.nfc.permission.TRANSACTION_EVENT")){
+                        if (packageInfo.requestedPermissions[xx].equals(GSMA_PERMISSION)){
                             // add this into GSMA packages
                             isGsmaService = true;
                             break;
@@ -359,6 +374,7 @@ public final class SmartcardService extends Service {
             registerNfcEvent(getApplicationContext());
             registerPackageUpdateEvent(getApplicationContext());
             registerMediaMountedEvent(getApplicationContext());
+            registerGsmaServiceEvent(getApplicationContext());
             mInitialiseTask = null;
         }
     }
@@ -462,11 +478,11 @@ public final class SmartcardService extends Service {
         Log.v(_TAG, "register NFC event");
 
         IntentFilter intentFilter = new IntentFilter();
-        intentFilter.addAction("com.android.nfc_extras.action.RF_FIELD_ON_DETECTED");
-        intentFilter.addAction("com.android.nfc_extras.action.RF_FIELD_OFF_DETECTED");
-        intentFilter.addAction("com.android.nfc_extras.action.AID_SELECTED");
-        intentFilter.addAction("org.simalliance.openmobileapi.service.ACTION_CHECK_CERT");
-        intentFilter.addAction("org.simalliance.openmobileapi.service.ACTION_CHECK_X509");
+        intentFilter.addAction(RF_FIELD_ON_DETECTED);
+        intentFilter.addAction(RF_FIELD_OFF_DETECTED);
+        intentFilter.addAction(AID_SELECTED);
+        intentFilter.addAction(ACTION_CHECK_CERT);
+        intentFilter.addAction(ACTION_CHECK_X509);
 
         mNfcEventReceiver = new BroadcastReceiver() {
             @Override
@@ -479,20 +495,20 @@ public final class SmartcardService extends Service {
                 String seName = null;
                 String action = intent.getAction();
 
-                if (action.equals("com.android.nfc_extras.action.RF_FIELD_ON_DETECTED")){
+                if (action.equals(RF_FIELD_ON_DETECTED)){
                     nfcAdapterExtraActionRfFieldOn = true;
                     aid = new byte[] { 0x00, 0x00, 0x00, 0x00, 0x00 };
                     Log.i(_TAG, "got RF_FIELD_ON_DETECTED");
                 }
-                else if (action.equals("com.android.nfc_extras.action.RF_FIELD_OFF_DETECTED")){
+                else if (action.equals(RF_FIELD_OFF_DETECTED)){
                     nfcAdapterExtraActionRfFieldOff = true;
                     aid = new byte[] { 0x00, 0x00, 0x00, 0x00, 0x00 };
                     Log.i(_TAG, "got RF_FIELD_OFF_DETECTED");
                 }
-                else if (action.equals("org.simalliance.openmobileapi.service.ACTION_CHECK_X509")){
+                else if (action.equals(ACTION_CHECK_X509)){
                     Log.i(_TAG, "got ACTION_CHECK_X509");
-                    String pkg = intent.getStringExtra("org.simalliance.openmobileapi.service.EXTRA_PKG");
-                    seName = intent.getStringExtra("org.simalliance.openmobileapi.service.EXTRA_SE_NAME");
+                    String pkg = intent.getStringExtra(EXTRA_PKG);
+                    seName = intent.getStringExtra(EXTRA_SE_NAME);
 
                     NfcQcomAdapter nfcQcomAdapter = NfcQcomAdapter.getNfcQcomAdapter(context);
                     if (nfcQcomAdapter == null) {
@@ -532,10 +548,10 @@ public final class SmartcardService extends Service {
 
                     return;
                 }
-                else if (action.equals("org.simalliance.openmobileapi.service.ACTION_CHECK_CERT")){
+                else if (action.equals(ACTION_CHECK_CERT)){
                     Log.i(_TAG, "got ACTION_CHECK_CERT");
-                    seName = intent.getStringExtra("org.simalliance.openmobileapi.service.EXTRA_SE_NAME");
-                    String pkg = intent.getStringExtra("org.simalliance.openmobileapi.service.EXTRA_PKG");
+                    seName = intent.getStringExtra(EXTRA_SE_NAME);
+                    String pkg = intent.getStringExtra(EXTRA_PKG);
                     Log.i(_TAG, "SE_NAME : " + seName + ", PKG : " + pkg);
 
                     NfcQcomAdapter nfcQcomAdapter = NfcQcomAdapter.getNfcQcomAdapter(context);
@@ -574,7 +590,7 @@ public final class SmartcardService extends Service {
                     }
                     return;
                 }
-                else if (action.equals("com.android.nfc_extras.action.AID_SELECTED")){
+                else if (action.equals(AID_SELECTED)){
                     nfcAdapterExtraActionAidSelected = true;
                     aid = intent.getByteArrayExtra("com.android.nfc_extras.extra.AID");
                     data = intent.getByteArrayExtra("com.android.nfc_extras.extra.DATA");
@@ -634,13 +650,16 @@ public final class SmartcardService extends Service {
                                 continue;
                             }
 
-                            Log.i(_TAG, "Checking access rules for RF Field On/Off for " + readers[i]);
+                            Log.i(_TAG, "Checking access rules for RF Field On/Off for " +
+                                        readers[i]);
 
                             // use cached rule without checking refresh tag
-                            boolean [] nfcEventAccess = terminal.isNFCEventAllowed(getPackageManager(), aid, packageNames,
-                                                                                   false, callback);
+                            boolean [] nfcEventAccess = terminal.isNFCEventAllowed(
+                                                            getPackageManager(), aid, packageNames,
+                                                            false, callback);
 
-                            // RF Field ON/OFF doesn't belong to any SE, so allow access to NFC Event if any SE allows
+                            // RF Field ON/OFF doesn't belong to any SE,
+                            // so allow access to NFC Event if any SE allows
                             if (nfcEventAccessFinal == null) {
                                 nfcEventAccessFinal = nfcEventAccess;
                             } else {
@@ -662,15 +681,17 @@ public final class SmartcardService extends Service {
 
                         Log.i(_TAG, "Checking access rules for AID Selected for " + seName);
 
-                        nfcEventAccessFinal = terminal.isNFCEventAllowed(getPackageManager(), aid, packageNames, true, callback);
+                        nfcEventAccessFinal = terminal.isNFCEventAllowed(getPackageManager(),
+                                                             aid, packageNames, true, callback);
                     }
 
                     if (nfcEventAccessFinal != null) {
                         synchronized(this) {
                             for (int i = 0; i < nfcEventAccessFinal.length; i++) {
                                 if (nfcEventAccessFinal[i]) {
-                                    if ((nfcAdapterExtraActionAidSelected) && (i < numGsmaPackages)) {
-                                        intent.setAction("com.gsma.services.nfc.action.TRANSACTION_EVENT");
+                                    if ((nfcAdapterExtraActionAidSelected) &&
+                                        (i < numGsmaPackages)) {
+                                        intent.setAction(TRANSACTION_EVENT);
                                     }
                                     intent.addFlags(Intent.FLAG_INCLUDE_STOPPED_PACKAGES);
                                     intent.setPackage(packageNames[i]);
@@ -723,6 +744,83 @@ public final class SmartcardService extends Service {
             mMediaReceiver = null;
         }
      }
+
+    private void registerGsmaServiceEvent(Context context) {
+        Log.v(_TAG, "register GSMA Service event");
+
+        IntentFilter intentFilter = new IntentFilter();
+        intentFilter.addAction(ACTION_CHECK_AID);
+
+        mGsmaServiceEventReceiver = new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context context, Intent intent) {
+                String action = intent.getAction();
+
+                // GSMA service asks to check if AIDs are selectable
+                if (action.equals(ACTION_CHECK_AID)){
+                    String seName = intent.getStringExtra(EXTRA_SE_NAME);
+
+                    SmartcardError error = new SmartcardError();
+                    Terminal terminal = (Terminal)getTerminal(seName, error);
+                    if (terminal == null) {
+                        Log.i(_TAG, "ACTION_CHECK_AID: Couldn't get terminal for " + seName);
+                        //notify GSMA service with empty
+                        Intent returnIntent = new Intent();
+                        returnIntent.setAction(ACTION_CHECK_AID);
+                        returnIntent.putExtra(EXTRA_SE_NAME, seName);
+                        returnIntent.putExtra(EXTRA_AIDS, "");
+                        returnIntent.setPackage("com.qcom.gsma.services.nfc");
+                        context.sendBroadcast(returnIntent);
+                        return;
+                    }
+
+                    String aidsStringWithComma = intent.getStringExtra(EXTRA_AIDS);
+                    String[] aidsString;
+                    StringBuilder selectableAids = new StringBuilder();
+                    if (aidsStringWithComma != null) {
+                        aidsString = aidsStringWithComma.split(",");
+                        byte[] aid;
+                        for (int i = 0; (aidsString != null)&&(i < aidsString.length); i++) {
+                            Log.d(_TAG, "checking selectable at AID[" + i + "] = " +
+                                         aidsString[i]);
+                            // if prefix AID
+                            if (aidsString[i].endsWith("*")) {
+                                String prefixAid = aidsString[i].substring(0, aidsString[i].length() - 1);
+                                aid = Util.hexStringToBytes(prefixAid);
+                            } else {
+                                aid = Util.hexStringToBytes(aidsString[i]);
+                            }
+                            if (aid.length >= 5) {
+                                boolean selectable = terminal.isAidSelectable(aid);
+                                if (selectable) {
+                                    if (selectableAids.length() > 0)
+                                        selectableAids.append(",");
+                                    selectableAids.append(aidsString[i]);
+                                }
+                            }
+                        }
+                    }
+                    //notify GSMA service with selectable AIDs
+                    Log.v(_TAG, "selectable AIDs:" + selectableAids.toString());
+                    Intent returnIntent = new Intent();
+                    returnIntent.setAction(ACTION_CHECK_AID);
+                    returnIntent.putExtra(EXTRA_SE_NAME, seName);
+                    returnIntent.putExtra(EXTRA_AIDS, selectableAids.toString());
+                    returnIntent.setPackage("com.qcom.gsma.services.nfc");
+                    context.sendBroadcast(returnIntent);
+                }
+            }
+        };
+        context.registerReceiver(mGsmaServiceEventReceiver, intentFilter);
+    }
+
+    private void unregisterGsmaServiceEvent(Context context) {
+        if(mGsmaServiceEventReceiver!= null) {
+            Log.v(_TAG, "unregister GSMA Service event");
+            context.unregisterReceiver(mGsmaServiceEventReceiver);
+            mGsmaServiceEventReceiver = null;
+        }
+    }
 
     /**
      * Initalizes Access Control.
@@ -817,6 +915,7 @@ public final class SmartcardService extends Service {
         unregisterNfcEvent(getApplicationContext());
         unregisterPackageUpdateEvent(getApplicationContext());
         unregisterMediaMountedEvent(getApplicationContext());
+        unregisterGsmaServiceEvent(getApplicationContext());
 
         mServiceHandler = null;
 
@@ -830,6 +929,10 @@ public final class SmartcardService extends Service {
             setError(error, NullPointerException.class, "reader must not be null");
             return null;
         }
+
+        if (reader.equals("SIM"))
+            reader = "SIM1";
+
         ITerminal terminal = mTerminals.get(reader);
         if (terminal == null) {
             if (!mIsisConfig.equals("none")) {

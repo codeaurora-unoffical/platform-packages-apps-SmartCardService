@@ -212,7 +212,7 @@ public class AddonTerminal extends Terminal {
         }
     }
 
-    protected int internalOpenLogicalChannel(byte[] aid) throws Exception {
+    protected int internalOpenLogicalChannel(byte[] aid) throws CardException {
         if (mInternalOpenLogicalChannelAID == null) {
             throw new IllegalStateException(
                     "plugin error: Function internalOpenLogicalChannelAID() not found");
@@ -225,7 +225,9 @@ public class AddonTerminal extends Terminal {
             mSelectResponse = (byte[]) mGetSelectResponse.invoke(mInstance, (Object[]) null);
             return channel.intValue();
         } catch (Exception e) {
-            throw (Exception) e.getCause();
+            throw new CardException(
+                    "plugin internal error: internalOpenLogicalChannel() execution: "
+                            + e.getCause());
         }
     }
 
