@@ -196,7 +196,8 @@ public class SmartMxTerminal extends Terminal {
     }
 
     @Override
-    protected int internalOpenLogicalChannel(byte[] aid) throws Exception {
+    protected int internalOpenLogicalChannel(byte[] aid) throws CardException,
+        NullPointerException, NoSuchElementException, MissingResourceException {
 
         if (aid == null) {
             throw new NullPointerException("aid must not be null");

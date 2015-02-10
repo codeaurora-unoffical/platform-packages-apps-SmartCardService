@@ -65,4 +65,18 @@ public class Util {
     return buffer.toString();
     }
 
+    public static byte[] hexStringToBytes(String s) {
+        if (s == null || s.length() == 0) return null;
+        int len = s.length();
+        if (len % 2 != 0) {
+            s = '0' + s;
+            len++;
+        }
+        byte[] data = new byte[len / 2];
+        for (int i = 0; i < len; i += 2) {
+            data[i / 2] = (byte) ((Character.digit(s.charAt(i), 16) << 4)
+                    + Character.digit(s.charAt(i + 1), 16));
+        }
+        return data;
+    }
 }

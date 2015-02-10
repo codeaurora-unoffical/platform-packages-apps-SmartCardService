@@ -115,7 +115,8 @@ final class ASSDTerminal extends Terminal {
     }
 
     @Override
-    protected int internalOpenLogicalChannel() throws Exception {
+    protected int internalOpenLogicalChannel()
+        throws CardException, MissingResourceException {
 
         mSelectResponse = null;
         byte[] manageChannelCommand = new byte[] {
@@ -134,7 +135,8 @@ final class ASSDTerminal extends Terminal {
     }
 
     @Override
-    protected int internalOpenLogicalChannel(byte[] aid) throws Exception {
+    protected int internalOpenLogicalChannel(byte[] aid) throws CardException,
+        NullPointerException, NoSuchElementException, MissingResourceException  {
         int channelNumber = internalOpenLogicalChannel();
 
         if (aid == null) {

@@ -35,6 +35,7 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.NoSuchElementException;
+import java.util.MissingResourceException;
 import java.util.Random;
 
 
@@ -221,7 +222,8 @@ public abstract class Terminal implements ITerminal {
      * @return the number of the logical channel according to ISO 7816-4.
      * @throws CardException
      */
-    abstract protected int internalOpenLogicalChannel(byte[] aid) throws Exception;
+    abstract protected int internalOpenLogicalChannel(byte[] aid) throws CardException,
+        NullPointerException, NoSuchElementException, MissingResourceException;
 
     /**
      * Implementation of the MANAGE CHANNEL close command.
@@ -452,6 +454,48 @@ public abstract class Terminal implements ITerminal {
         return mIsConnected;
     }
 
+    private void disconnectIfNeeded() {
+        if (mIsConnected && mChannels.isEmpty()) {
+            try {
+                internalDisconnect();
+            } catch (CardException ignore) {
+                // UiccTerminal never throws this
+                // SmartMxTerminal throws this when NFC service has trouble
+            }
+        }
+    }
+
+    public boolean isAidSelectable(byte[] aid) {
+        if (aid == null) {
+            throw new NullPointerException("aid must not be null");
+        }
+
+        synchronized (mLock) {
+            int channelNumber = 0;
+            try {
+                if (mChannels.isEmpty()) {
+                    internalConnect();
+                }
+                channelNumber = internalOpenLogicalChannel(aid);
+                internalCloseLogicalChannel(channelNumber);
+                disconnectIfNeeded();
+                return true;
+            } catch (NullPointerException e) {
+                disconnectIfNeeded();
+                return false;
+            } catch (MissingResourceException e) {
+                disconnectIfNeeded();
+                return false;
+            } catch (NoSuchElementException e) {
+                disconnectIfNeeded();
+                return false;
+            } catch (CardException e) {
+                disconnectIfNeeded();
+                return false;
+            }
+        }
+    }
+
     /**
      * Protocol specific implementation of the transmit operation. This method
      * is synchronized in order to handle GET RESPONSE and command repetition
@@ -655,10 +699,12 @@ public abstract class Terminal implements ITerminal {
     }
 
     public synchronized boolean initializeAccessControl(boolean loadAtStartup, ISmartcardServiceCallback callback ){
-        if( mAccessControlEnforcer == null ){
-            mAccessControlEnforcer = new AccessControlEnforcer(this);
+        synchronized (mLock) {
+            if( mAccessControlEnforcer == null ){
+                mAccessControlEnforcer = new AccessControlEnforcer(this);
+            }
+            return mAccessControlEnforcer.initialize( loadAtStartup, callback );
         }
-        return mAccessControlEnforcer.initialize( loadAtStartup, callback );
     }
 
     public AccessControlEnforcer getAccessControlEnforcer(){
