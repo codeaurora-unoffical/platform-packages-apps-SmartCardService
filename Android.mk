@@ -7,6 +7,7 @@ LOCAL_SRC_FILES := $(call all-java-files-under, src)
 LOCAL_AIDL_INCLUDES := $(LOCAL_PATH)/openmobileapi/src/org/simalliance/openmobileapi/service
 
 LOCAL_PACKAGE_NAME := SmartcardService
+LOCAL_DEX_PREOPT := true
 LOCAL_CERTIFICATE := platform
 
 LOCAL_JAVA_LIBRARIES := org.simalliance.openmobileapi com.android.qcom.nfc_extras com.vzw.nfc
