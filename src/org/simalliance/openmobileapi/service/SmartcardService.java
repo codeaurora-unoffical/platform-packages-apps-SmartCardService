@@ -560,19 +560,21 @@ public final class SmartcardService extends Service {
                     if (nfcAdapterExtraActionRfFieldOn || nfcAdapterExtraActionRfFieldOff) {
                         SmartcardError error = new SmartcardError();
                         String readers[] = updateTerminals();
-                        AccessControlEnforcer acEnforcer;
+                        ITerminal terminal;
+                        ISmartcardServiceCallback callback = new ISmartcardServiceCallback.Stub(){};
                         for (int i = 0; i < readers.length; i++){
-                            acEnforcer = getTerminal(readers[i], error).getAccessControlEnforcer();
-                            if( acEnforcer == null ) {
-                                Log.i(_TAG, "Couldn't get AccessControlEnforcer for " + readers[i]);
+                            terminal = getTerminal(readers[i], error);
+                            if ((terminal == null)||(!terminal.isCardPresent())) {
+                                Log.i(_TAG, "SE:" + readers[i] + " is not present");
                                 continue;
                             }
 
                             Log.i(_TAG, "Checking access rules for RF Field On/Off for " + readers[i]);
 
-                            acEnforcer.setPackageManager(getPackageManager());
-                            boolean [] nfcEventAccess = acEnforcer.isNFCEventAllowed(aid, packageNames,
-                                                                                     (ISmartcardServiceCallback)null );
+                            // use cached rule without checking refresh tag
+                            boolean [] nfcEventAccess = terminal.isNFCEventAllowed(getPackageManager(), aid, packageNames,
+                                                                                   false, callback);
+
                             // RF Field ON/OFF doesn't belong to any SE, so allow access to NFC Event if any SE allows
                             if (nfcEventAccessFinal == null) {
                                 nfcEventAccessFinal = nfcEventAccess;
@@ -586,7 +588,6 @@ public final class SmartcardService extends Service {
                         }
                     } else if (nfcAdapterExtraActionAidSelected) {
                         SmartcardError error = new SmartcardError();
-                        AccessControlEnforcer acEnforcer;
                         ISmartcardServiceCallback callback = new ISmartcardServiceCallback.Stub(){};
                         ITerminal terminal = getTerminal(seName, error);
                         if (terminal == null) {
@@ -594,18 +595,9 @@ public final class SmartcardService extends Service {
                             return;
                         }
 
-                        acEnforcer = terminal.getAccessControlEnforcer();
-
-                        if( acEnforcer == null ) {
-                            Log.i(_TAG, "Couldn't get AccessControlEnforcer for " + seName);
-                            return;
-                        }
-
                         Log.i(_TAG, "Checking access rules for AID Selected for " + seName);
 
-                        acEnforcer.setPackageManager(getPackageManager());
-                        nfcEventAccessFinal = acEnforcer.isNFCEventAllowed(aid, packageNames,
-                                                                           callback );
+                        nfcEventAccessFinal = terminal.isNFCEventAllowed(getPackageManager(), aid, packageNames, true, callback);
                     }
 
                     if (nfcEventAccessFinal != null) {
@@ -1101,7 +1093,7 @@ public final class SmartcardService extends Service {
                 }
                 ac.setPackageManager(getPackageManager());
                 ac.initialize(true, callback);
-                return ac.isNFCEventAllowed(aid, packageNames, callback );
+                return ac.isNFCEventAllowed(aid, packageNames, true, callback );
             } catch (Exception e) {
                 setError(error, e);
                 Log.v(_TAG, "isNFCEventAllowed Exception: " + e.getMessage() );
