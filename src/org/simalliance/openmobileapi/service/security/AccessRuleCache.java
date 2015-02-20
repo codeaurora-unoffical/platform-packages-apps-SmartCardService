@@ -167,9 +167,12 @@ public class AccessRuleCache {
                 ca.setUseApduFilter(false);
                 ca.setApduFilter(null);
             }
-            Log.v(SmartcardService._TAG, "Merged Access Rule: " + ca.toString());
+            if (DBG) Log.v(SmartcardService._TAG, "Merged Access Rule: " + ref_do.toString() +
+                                                  ", " + ca.toString());
             return;
         }
+        if (DBG) Log.v(SmartcardService._TAG, "Add Access Rule: " + ref_do.toString() +
+                                              ", " + channelAccess.toString());
         mRuleCache.put(ref_do, channelAccess);
     }
 
@@ -205,6 +208,8 @@ public class AccessRuleCache {
                         (ca.getApduAccess() != ChannelAccess.ACCESS.UNDEFINED)) {
                         ca.setNFCEventAccess(ca.getApduAccess());
                     }
+                    if (DBG) Log.v(SmartcardService._TAG, "findAccessRule() " + ref_do.toString() +
+                                                          ", " + mRuleCache.get(ref_do).toString());
                     return mRuleCache.get( ref_do );
                 }
             } catch (CertificateEncodingException e) {
@@ -215,10 +220,12 @@ public class AccessRuleCache {
         // now we have to check if the given AID
         // is used together with another specific hash value (another device application)
         if( searchForRulesWithSpecificAidButOtherHash(aid_ref_do) != null ){
-            Log.v(SmartcardService._TAG, "Conflict Resolution Case A returning access rule \'NEVER\'.");
+            if (DBG) Log.v(SmartcardService._TAG,
+                           "Conflict Resolution Case A returning access rule \'NEVER\'.");
             ChannelAccess ca = new ChannelAccess();
             ca.setApduAccess(ChannelAccess.ACCESS.DENIED);
-            ca.setAccess(ChannelAccess.ACCESS.DENIED, "AID has a specific access rule with a different hash. (Case A)");
+            ca.setAccess(ChannelAccess.ACCESS.DENIED,
+                         "AID has a specific access rule with a different hash. (Case A)");
             ca.setNFCEventAccess(ChannelAccess.ACCESS.DENIED);
             return ca;
         }
@@ -230,6 +237,8 @@ public class AccessRuleCache {
         ref_do = new REF_DO(aid_ref_do, hash_ref_do);
 
         if( mRuleCache.containsKey( ref_do ) ){
+            if (DBG) Log.v(SmartcardService._TAG, "findAccessRule() " + ref_do.toString() +
+                                                  ", " + mRuleCache.get(ref_do).toString());
             return mRuleCache.get( ref_do );
         }
 
@@ -241,6 +250,17 @@ public class AccessRuleCache {
                 ref_do = new REF_DO(aid_ref_do, hash_ref_do);
 
                 if( mRuleCache.containsKey( ref_do ) ){
+                    //let's take care about the undefined rules, according to the GP specification:
+                    ChannelAccess ca = mRuleCache.get( ref_do );
+                    if(ca.getApduAccess() == ChannelAccess.ACCESS.UNDEFINED) {
+                        ca.setApduAccess(ChannelAccess.ACCESS.ALLOWED);
+                    }
+                    if((ca.getNFCEventAccess() == ChannelAccess.ACCESS.UNDEFINED) &&
+                        (ca.getApduAccess() != ChannelAccess.ACCESS.UNDEFINED)) {
+                        ca.setNFCEventAccess(ca.getApduAccess());
+                    }
+                    if (DBG) Log.v(SmartcardService._TAG, "findAccessRule() " + ref_do.toString() +
+                                                          ", " + mRuleCache.get(ref_do).toString());
                     return mRuleCache.get( ref_do );
                 }
             } catch (CertificateEncodingException e) {
@@ -252,10 +272,12 @@ public class AccessRuleCache {
         // now we have to check if the all AID DO
         // is used together with another Hash
         if( this.searchForRulesWithAllAidButOtherHash() != null ){
-            Log.v(SmartcardService._TAG, "Conflict Resolution Case C returning access rule \'NEVER\'.");
+            if (DBG) Log.v(SmartcardService._TAG,
+                           "Conflict Resolution Case C returning access rule \'NEVER\'.");
             ChannelAccess ca = new ChannelAccess();
             ca.setApduAccess(ChannelAccess.ACCESS.DENIED);
-            ca.setAccess(ChannelAccess.ACCESS.DENIED, "An access rule with a different hash and all AIDs was found. (Case C)");
+            ca.setAccess(ChannelAccess.ACCESS.DENIED,
+                         "An access rule with a different hash and all AIDs was found. (Case C)");
             ca.setNFCEventAccess(ChannelAccess.ACCESS.DENIED);
             return ca;
         }
@@ -267,8 +289,12 @@ public class AccessRuleCache {
         ref_do = new REF_DO(aid_ref_do, hash_ref_do);
 
         if( mRuleCache.containsKey( ref_do ) ){
+            if (DBG) Log.v(SmartcardService._TAG, "findAccessRule() " + ref_do.toString() +
+                                                  ", " + mRuleCache.get(ref_do).toString());
             return mRuleCache.get( ref_do );
         }
+
+        if (DBG) Log.v(SmartcardService._TAG, "findAccessRule() not found");
         return null;
     }
 
