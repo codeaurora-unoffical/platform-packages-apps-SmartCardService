@@ -172,17 +172,58 @@ public final class SmartcardService extends Service {
      */
     private ServiceHandler mServiceHandler;
 
-    List<PackageInfo> mInstalledPackages; // cached version of installed packages
-
     static NfcQcomAdapter nfcQcomAdapter = null;
+
+    // packages with Manifest.permission.NFC
+    List<PackageInfo> mInstalledNfcPackages = new ArrayList<PackageInfo>();
+    // packages with com.gsma.services.nfc.permission.TRANSACTION_EVENT
+    List<PackageInfo> mInstalledGsmaPackages = new ArrayList<PackageInfo>();
+
     void updatePackageCache() {
         PackageManager pm = getPackageManager();
-        // List<PackageInfo> packages = pm.getInstalledPackages(0, UserHandle.USER_OWNER);
-        String[] permissions = new String[1];
-        permissions[0]=Manifest.permission.NFC;
+        String[] permissions = new String[2];
+        permissions[0] = Manifest.permission.NFC;
+        permissions[1] = "com.gsma.services.nfc.permission.TRANSACTION_EVENT";
         List<PackageInfo> packages = pm.getPackagesHoldingPermissions(permissions, 0);
+
+        // packages with GSMA permission, sorted by installed time
+        Map<Long, PackageInfo> gsmaPackages = new TreeMap<Long, PackageInfo>();
+
         synchronized (this) {
-            mInstalledPackages = packages;
+            mInstalledNfcPackages.clear();
+            mInstalledGsmaPackages.clear();
+            boolean isGsmaService = false;
+            for (PackageInfo packageInfo: packages) {
+                if (packageInfo.applicationInfo != null) {
+                    if (packageInfo.packageName.equals("com.qcom.gsma.services.nfc") ||
+                        packageInfo.packageName.equals("org.simalliance.openmobileapi.service")) {
+                        // do not include these packages
+                        continue;
+                    }
+                } else {
+                    continue;
+                }
+                if (packageInfo.requestedPermissions != null) {
+                    for (int xx = 0; xx < packageInfo.requestedPermissions.length; xx++) {
+                        if (packageInfo.requestedPermissions[xx].equals("com.gsma.services.nfc.permission.TRANSACTION_EVENT")){
+                            // add this into GSMA packages
+                            isGsmaService = true;
+                            break;
+                        }
+                    }
+                }
+                if (isGsmaService) {
+                    // sorted by installed time for unicast mode
+                    gsmaPackages.put(packageInfo.firstInstallTime, packageInfo);
+                    isGsmaService = false;
+                } else {
+                    mInstalledNfcPackages.add(packageInfo);
+                }
+            }
+
+            for (Map.Entry<Long, PackageInfo> entry: gsmaPackages.entrySet()){
+                mInstalledGsmaPackages.add(entry.getValue());
+            }
         }
     }
 
@@ -543,11 +584,21 @@ public final class SmartcardService extends Service {
                         return;
                     }
 
-                    String [] packageNames = new String[mInstalledPackages.size()];
-                    {
-                        int i = 0;
-                        synchronized(this) {
-                            for (PackageInfo pkg : mInstalledPackages) {
+                    int numGsmaPackages;
+                    int numNfcPackages;
+                    String [] packageNames;
+                    synchronized(this) {
+                        numGsmaPackages = mInstalledGsmaPackages.size();
+                        numNfcPackages = mInstalledNfcPackages.size();
+                        packageNames = new String[numGsmaPackages + numNfcPackages];
+                        {
+                            int i = 0;
+                            for (PackageInfo pkg : mInstalledGsmaPackages) {
+                                if (pkg != null && pkg.applicationInfo != null) {
+                                    packageNames[i++] = new String(pkg.packageName);
+                                }
+                            }
+                            for (PackageInfo pkg : mInstalledNfcPackages) {
                                 if (pkg != null && pkg.applicationInfo != null) {
                                     packageNames[i++] = new String(pkg.packageName);
                                 }
@@ -579,7 +630,7 @@ public final class SmartcardService extends Service {
                             if (nfcEventAccessFinal == null) {
                                 nfcEventAccessFinal = nfcEventAccess;
                             } else {
-                                for (int j = 0; j < mInstalledPackages.size(); j++) {
+                                for (int j = 0; j < nfcEventAccess.length; j++) {
                                     if (nfcEventAccess[j] == true) {
                                         nfcEventAccessFinal[j] = true;
                                     }
@@ -602,10 +653,11 @@ public final class SmartcardService extends Service {
 
                     if (nfcEventAccessFinal != null) {
                         synchronized(this) {
-                            for (int i = 0; i < mInstalledPackages.size(); i++) {
+                            for (int i = 0; i < nfcEventAccessFinal.length; i++) {
                                 if (nfcEventAccessFinal[i]) {
-                                    if (packageNames[i].equals("org.simalliance.openmobileapi.service"))
-                                        continue;
+                                    if ((nfcAdapterExtraActionAidSelected) && (i < numGsmaPackages)) {
+                                        intent.setAction("com.gsma.services.nfc.action.TRANSACTION_EVENT");
+                                    }
                                     intent.addFlags(Intent.FLAG_INCLUDE_STOPPED_PACKAGES);
                                     intent.setPackage(packageNames[i]);
                                     try {
