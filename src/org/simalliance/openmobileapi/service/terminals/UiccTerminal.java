@@ -88,8 +88,13 @@ public class UiccTerminal extends Terminal {
     @Override
     protected void internalConnect() throws CardException {
         if (manager == null) {
-            Log.e(_TAG, "internalConnect(): throw CardException");
-            throw new CardException("Cannot connect to Telephony Service");
+            Log.d(_TAG, "Try to rebind telephone service");
+            manager = ITelephony.Stub.asInterface(ServiceManager
+                    .getService(Context.TELEPHONY_SERVICE));
+            if (manager == null) {
+                Log.e(_TAG, "internalConnect(): throw CardException");
+                throw new CardException("Cannot connect to Telephony Service");
+            }
         }
         mIsConnected = true;
     }
