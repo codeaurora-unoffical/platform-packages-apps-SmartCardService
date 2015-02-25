@@ -166,6 +166,8 @@ public interface ITerminal {
     public byte[] simIOExchange(int fileID, String filePath, byte[] cmd) throws Exception;
 
 
+    public boolean[] isNFCEventAllowed (PackageManager packageManager, byte[] aid, String[] packageNames,
+                                        boolean checkRefreshTag, ISmartcardServiceCallback callback);
 
     /**
      * Set ups the Channel Access object for access control
