@@ -225,7 +225,7 @@ public class AccessControlEnforcer {
     }
 
     public static Certificate decodeCertificate(byte[] certData) throws CertificateException {
-        Log.d(SmartcardService._TAG, "decodeCertificate for appcert ...." );
+        //Log.d(SmartcardService._TAG, "decodeCertificate for appcert ...." );
         CertificateFactory certFactory = CertificateFactory.getInstance("X.509");
         X509Certificate cert = (X509Certificate) certFactory
                 .generateCertificate(new ByteArrayInputStream(certData));
