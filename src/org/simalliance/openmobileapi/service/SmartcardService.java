@@ -596,7 +596,7 @@ public final class SmartcardService extends Service {
                     } else if (nfcAdapterExtraActionAidSelected) {
                         SmartcardError error = new SmartcardError();
                         AccessControlEnforcer acEnforcer;
-
+                        ISmartcardServiceCallback callback = new ISmartcardServiceCallback.Stub(){};
                         ITerminal terminal = getTerminal(seName, error);
                         if (terminal == null) {
                             Log.i(_TAG, "Couldn't get terminal for " + seName);
@@ -614,7 +614,7 @@ public final class SmartcardService extends Service {
 
                         acEnforcer.setPackageManager(getPackageManager());
                         nfcEventAccessFinal = acEnforcer.isNFCEventAllowed(aid, packageNames,
-                                                                           (ISmartcardServiceCallback)null );
+                                                                           callback );
                     }
 
                     if (nfcEventAccessFinal != null) {
