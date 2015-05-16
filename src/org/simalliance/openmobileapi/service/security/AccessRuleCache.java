@@ -196,6 +196,15 @@ public class AccessRuleCache {
                 ref_do = new REF_DO(aid_ref_do, hash_ref_do);
 
                 if( mRuleCache.containsKey( ref_do ) ){
+                    //let's take care about the undefined rules, according to the GP specification:
+                    ChannelAccess ca = mRuleCache.get( ref_do );
+                    if(ca.getApduAccess() == ChannelAccess.ACCESS.UNDEFINED) {
+                        ca.setApduAccess(ChannelAccess.ACCESS.ALLOWED);
+                    }
+                    if((ca.getNFCEventAccess() == ChannelAccess.ACCESS.UNDEFINED) &&
+                        (ca.getApduAccess() != ChannelAccess.ACCESS.UNDEFINED)) {
+                        ca.setNFCEventAccess(ca.getApduAccess());
+                    }
                     return mRuleCache.get( ref_do );
                 }
             } catch (CertificateEncodingException e) {
