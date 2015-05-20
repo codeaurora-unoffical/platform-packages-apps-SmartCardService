@@ -29,6 +29,7 @@ import org.simalliance.openmobileapi.service.security.arf.SecureElementException
 
 import android.os.ServiceManager;
 import android.os.SystemProperties;
+import android.os.RemoteException;
 import android.util.Log;
 
 import android.telephony.IccOpenLogicalChannelResponse;
@@ -301,7 +302,8 @@ public class UiccTerminal extends Terminal {
     }
 
     @Override
-    protected int internalOpenLogicalChannel(byte[] aid) throws Exception {
+    protected int internalOpenLogicalChannel(byte[] aid) throws CardException,
+        NullPointerException, NoSuchElementException, MissingResourceException{
         IccOpenLogicalChannelResponse response;
         if (aid == null) {
             Log.e(_TAG, "internalOpenLogicalChannel(aid): throw NullPointerException");
@@ -310,10 +312,16 @@ public class UiccTerminal extends Terminal {
         mSelectResponse = null;
         for (int i = 1; i < channelId.length; i++) {
             if (channelId[i] == 0) {
-                if (SmartcardService.mIsMultiSimEnabled) {
-                    response = manager.iccOpenLogicalChannelUsingSubId(mUiccSlot, ByteArrayToString(aid, 0));
-                } else {
-                    response = manager.iccOpenLogicalChannel(ByteArrayToString(aid, 0));
+                try {
+                    if (SmartcardService.mIsMultiSimEnabled) {
+                        response = manager.iccOpenLogicalChannelUsingSubId(
+                                               mUiccSlot, ByteArrayToString(aid, 0));
+                    } else {
+                        response = manager.iccOpenLogicalChannel(ByteArrayToString(aid, 0));
+                    }
+                } catch (RemoteException e) {
+                    throw new CardException("iccOpenLogicalChannel failed, RemoteException:"
+                                            + e.getMessage());
                 }
 
                 channelId[i] = response.getChannel();
